@@ -1,0 +1,50 @@
+# File e directory da ignorare per Crick
+# Questo file segue lo stesso formato di .gitignore
+
+# Directory di sistema
+.git/
+.crick/           # La cartella di Crick stessa
+__pycache__/
+.idea/
+.vscode/
+node_modules/
+venv/
+target/
+build/
+dist/
+*.egg-info/
+
+# File di build/compilazione
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.class
+*.jar
+
+# File di log e temporanei
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Database e file di dati
+*.db
+*.sqlite
+*.sqlite3
+*.lance
+
+# File di ambiente
+.env
+.env.local
+.env.*
+*.env
+
+# File di configurazione locale
+*.local
+*.local.*
+
+#Other
+*.svg

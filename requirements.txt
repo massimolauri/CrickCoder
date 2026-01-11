@@ -1,0 +1,9 @@
+lancedb 
+agno
+sentence-transformers 
+langchain-text-splitters 
+langchain-core 
+pyarrow
+genai
+anthropic
+openai
