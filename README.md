@@ -99,20 +99,38 @@ Unlike generic AI coding assistants, Crick provides **real-time codebase awarene
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/crick-coder.git
-   cd crick-coder
-   ```
+   git clone https://github.com/massimolauri/CrickCoder.git
+   cd CrickCoder
 
-2. **Set up Python backend**
+2. **Set up Python Virtual Environment** It is recommended to use a virtual environment to manage dependencies and avoid conflicts.
    ```bash
+     Windows
+
+     # Create virtual environment
+     python -m venv .venv
+
+     # Activate environment
+     .\.venv\Scripts\activate
+
+     macOS / Linux
+
+     # Create virtual environment
+     python3 -m venv .venv
+
+     # Activate environment
+     source .venv/bin/activate
+3. **Set up Python backend**
+   ```bash
+   
+   # 1. Upgrade pip (Required for proper dependency resolution)
+   python -m pip install --upgrade pip
+   
    # Install Python dependencies
    pip install -r requirements.txt
 
-   # Additional dependencies (if not auto-installed)
-   pip install fastapi uvicorn watchdog sentence-transformers
    ```
 
-3. **Set up React frontend**
+4. **Set up React frontend**
    ```bash
    cd crick-ui
    npm install
