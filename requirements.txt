@@ -1,9 +1,34 @@
-lancedb 
-agno
-sentence-transformers 
-langchain-text-splitters 
-langchain-core 
-pyarrow
-genai
-anthropic
-openai
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# LLM Orchestration, RAG & Agents
+langchain-core==1.2.7
+langchain-text-splitters==1.1.0
+agno==2.3.25
+
+# AI Model Providers (API Clients)
+openai==2.15.0
+anthropic==0.75.0
+google-genai==1.57.0
+ollama==0.6.1
+
+# Vector Database & Search infrastructure
+lancedb==0.26.1
+pyarrow==22.0.0
+tantivy==0.25.1
+
+# Web API & Server
+fastapi==0.128.0
+uvicorn==0.40.0
+
+# Data Processing
+pandas==2.3.3
+
+# System Utilities & Async Database
+watchdog==6.0.0
+pathspec==1.0.3
+aiosqlite==0.22.1
+sqlalchemy==2.0.45
+
+# Core ML & Embeddings (CPU Optimized)
+torch==2.9.1+cpu
+sentence-transformers==5.2.0
