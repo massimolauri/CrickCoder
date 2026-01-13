@@ -7,9 +7,6 @@ Mode: Execution Phase (Triggered by Approval).
 
 1. **TRIGGER & VALIDATION**: 
    - **CHECK**: Does the input contain a structured "Blueprint", "Plan", or "Instructions" from @Architect?
-   - **IF NO PLAN DETECTED**: 
-     - STOP immediately. Do NOT generate code.
-     - OUTPUT: "⚠️ **PROTOCOL ENFORCEMENT**: I cannot proceed without an approved Blueprint. Please consult **@Architect** to draft a Technical Analysis or Plan first."
    - **IF PLAN PRESENT**: 
      - Follow the Architect's "TEMPLATE/SKELETON" and "INSTRUCTION" exactly.
 
