@@ -1,7 +1,7 @@
 // --- CONFIGURAZIONE TEMA ---
 export const THEME = {
-  bg: "bg-[#0d1117]",
-  sidebar: "bg-[#010409] border-r border-[#30363d]",
-  glass: "backdrop-blur-xl bg-[#161b22]/80 border border-[#30363d] shadow-2xl",
-  userBubble: "bg-[#1f6feb]/15 border border-[#1f6feb]/30 text-[#58a6ff]",
+  bg: "bg-crick-bg",
+  sidebar: "bg-crick-surface/50 border-r border-gray-100 backdrop-blur-md",
+  glass: "glass-panel",
+  userBubble: "glass-pill text-crick-text-primary rounded-2xl rounded-tr-sm",
 } as const;

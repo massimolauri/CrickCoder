@@ -108,75 +108,86 @@ const SessionList: React.FC<SessionListProps> = ({
   }
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      {/* Bottone nuova sessione */}
+    <div className={`space-y-3 ${className}`}>
+      {/* New Session Button */}
       {onNewSession && (
         <button
           onClick={onNewSession}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#1f6feb]/10 hover:bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/30 hover:border-[#1f6feb]/50 transition-colors text-sm font-medium mb-2"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#1a73e8] hover:bg-[#1557b0] text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm font-bold tracking-wide"
         >
-          <Plus size={14} />
-          New Session
+          <Plus size={16} />
+          NEW SESSION
         </button>
       )}
-      <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+
+      <div className="px-4 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
         Recent Sessions ({sessions.sessionCount})
       </div>
-      {sessions.sessions.map((session) => {
-        const lastRequestText = getSummaryText(session.last_request);
-        const showLastRequest = lastRequestText && lastRequestText.trim() !== '';
-        return (
-          <div
-            key={session.session_id}
-            className={`px-3 py-3 rounded-lg cursor-pointer transition-all border group ${
-              selectedSessionId === session.session_id
-                ? 'bg-[#1f6feb]/20 border-[#1f6feb]/30 shadow-md'
-                : 'bg-[#161b22] border-[#30363d] hover:bg-[#1f6feb]/10 hover:border-[#1f6feb]/20 shadow-sm'
-            }`}
-            onClick={() => onSelectSession?.(session.session_id)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center mb-1 flex-1 min-w-0">
-                <span className="text-sm font-medium text-slate-300 truncate overflow-hidden">
-                  {getSummaryText(session.summary) || session.session_id.slice(0, 8)}
-                </span>
+
+      <div className="space-y-2">
+        {sessions.sessions.map((session) => {
+          const lastRequestText = getSummaryText(session.last_request);
+          const showLastRequest = lastRequestText && lastRequestText.trim() !== '';
+          const isSelected = selectedSessionId === session.session_id;
+
+          return (
+            <div
+              key={session.session_id}
+              className={`px-4 py-3 rounded-2xl cursor-pointer transition-all border group relative overflow-hidden ${isSelected
+                ? 'bg-blue-50/80 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 shadow-sm'
+                : 'bg-transparent border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:border-gray-100 dark:hover:border-white/5'
+                }`}
+              onClick={() => onSelectSession?.(session.session_id)}
+            >
+              {isSelected && (
+                <div className="absolute left-0 top-3 bottom-3 w-1 bg-crick-accent rounded-r-full" />
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center mb-1 flex-1 min-w-0 pl-2">
+                  <span className={`text-sm truncate overflow-hidden transition-colors ${isSelected ? 'font-semibold text-crick-accent' : 'font-medium text-crick-text-primary group-hover:text-crick-text-primary'}`}>
+                    {getSummaryText(session.summary) || session.session_id.slice(0, 8)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm('Are you sure you want to delete this session?')) {
+                        sessions.deleteSession(session.session_id);
+                      }
+                    }}
+                    className="p-1.5 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Delete session"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                  {isSelected && (
+                    <ChevronRight size={14} className="text-crick-accent animate-in fade-in slide-in-from-left-1" />
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (window.confirm('Are you sure you want to delete this session?')) {
-                      sessions.deleteSession(session.session_id);
-                    }
-                  }}
-                  className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                  title="Delete session"
-                >
-                  <Trash2 size={12} />
-                </button>
-                {selectedSessionId === session.session_id && (
-                  <ChevronRight size={14} className="text-[#58a6ff]" />
-                )}
+
+              <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400 pl-2 transition-opacity">
+                <div className="flex items-center gap-1">
+                  <Calendar size={10} />
+                  <span>{session.updated_at_formatted ? session.updated_at_formatted.split(' ')[0] : formatDate(session.updated_at)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock size={10} />
+                  <span>{session.updated_at_formatted ? session.updated_at_formatted.split(' ')[1] : formatTime(session.updated_at)}</span>
+                </div>
               </div>
+
+              {showLastRequest && (
+                <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 truncate pl-2 opacity-60 group-hover:opacity-100 transition-opacity font-mono">
+                  {lastRequestText}
+                </div>
+              )}
             </div>
-            <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-              <div className="flex items-center gap-1">
-                <Calendar size={12} />
-                <span>{session.updated_at_formatted ? session.updated_at_formatted.split(' ')[0] : formatDate(session.updated_at)}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock size={12} />
-                <span>{session.updated_at_formatted ? session.updated_at_formatted.split(' ')[1] : formatTime(session.updated_at)}</span>
-              </div>
-            </div>
-            {showLastRequest && (
-              <div className="mt-2 text-xs text-slate-400 truncate">
-                Last: {lastRequestText}
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };

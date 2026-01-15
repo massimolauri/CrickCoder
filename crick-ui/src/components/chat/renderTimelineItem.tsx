@@ -18,29 +18,33 @@ export function renderTimelineItem(item: TimelineItem, index: number): React.Rea
       return (
         <div key={index} className="flex flex-col animate-in fade-in duration-300">
           <AgentHeader name={item.agent} />
-          <div className="text-sm text-slate-300 leading-7 font-sans mb-2 pl-1 markdown-body">
+          <div className="text-sm text-crick-text-primary leading-relaxed font-sans mb-2 pl-1 markdown-body">
             <ReactMarkdown
               remarkPlugins={[]}
               components={{
-                code({node, inline, className, children, ...props}: any) {
+                code({ node, inline, className, children, ...props }: any) {
                   const match = /language-(\w+)/.exec(className || '')
                   return !inline && match ? (
-                    <div className="my-3 rounded-md overflow-hidden border border-[#30363d] bg-[#0d1117] shadow-md">
-                        <div className="flex items-center justify-between px-3 py-1.5 bg-[#161b22] border-b border-[#30363d]">
-                            <div className="flex items-center gap-2"><FileText size={12} className="text-blue-400"/><span className="text-xs text-slate-400 font-mono">{match[1]}</span></div>
+                    <div className="my-3 rounded-lg overflow-hidden border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] shadow-sm">
+                      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d]">
+                        <div className="flex items-center gap-2">
+                          <FileText size={12} className="text-blue-500 dark:text-blue-400" />
+                          <span className="text-xs text-gray-500 dark:text-slate-400 font-mono font-medium">{match[1]}</span>
                         </div>
-                        <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" customStyle={{ margin: 0, padding: '16px', background: 'transparent', fontSize: '12px', lineHeight: '1.5' }} wrapLines={true} {...props}>
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
+                      </div>
+                      <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" customStyle={{ margin: 0, padding: '16px', background: 'transparent', fontSize: '13px', lineHeight: '1.6' }} wrapLines={true} {...props}>
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
                     </div>
                   ) : (
-                    <code className="bg-[#1f6feb]/20 text-[#58a6ff] px-1.5 py-0.5 rounded text-xs font-mono border border-[#1f6feb]/30" {...props}>{children}</code>
+                    <code className="bg-gray-100 dark:bg-[#1f6feb]/20 text-pink-600 dark:text-[#58a6ff] px-1.5 py-0.5 rounded text-xs font-mono border border-gray-200 dark:border-[#1f6feb]/30 font-medium" {...props}>{children}</code>
                   )
                 },
-                ul: ({children}: any) => <ul className="list-disc pl-5 my-2 space-y-1 text-slate-400">{children}</ul>,
-                ol: ({children}: any) => <ol className="list-decimal pl-5 my-2 space-y-1 text-slate-400">{children}</ol>,
-                a: ({href, children}: any) => <a href={href} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">{children}</a>,
-                p: ({children}: any) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }: any) => <ul className="list-disc pl-5 my-2 space-y-1 text-crick-text-primary">{children}</ul>,
+                ol: ({ children }: any) => <ol className="list-decimal pl-5 my-2 space-y-1 text-crick-text-primary">{children}</ol>,
+                a: ({ href, children }: any) => <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-emerald-400 hover:underline font-medium">{children}</a>,
+                p: ({ children }: any) => <p className="mb-2 last:mb-0 text-crick-text-primary">{children}</p>,
+                strong: ({ children }: any) => <strong className="font-bold text-gray-900 dark:text-white">{children}</strong>
               }}
             >
               {item.content}

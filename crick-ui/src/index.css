@@ -1,7 +1,180 @@
 @import "tailwindcss";
 
-/* Opzionale: Background scuro di base per evitare flash bianchi */
+:root {
+  --crick-font-sans: "Inter", system-ui, sans-serif;
+
+  /* Light Theme */
+  --bg-primary: #ffffff;
+  --bg-surface: #F8F9FA;
+  --text-primary: #121317;
+  --text-secondary: #5f6368;
+  --btn-primary-bg: #121317;
+  --btn-primary-text: #ffffff;
+}
+
+.dark {
+  /* Dark Theme - Gemini Material Style */
+  --bg-primary: #131314;
+  --bg-surface: #1E1F20;
+  --text-primary: #E3E3E3;
+  --text-secondary: #A8C7FA;
+  /* Light Blue tint for secondary text often used in Gemini */
+  --btn-primary-bg: #E3E3E3;
+  --btn-primary-text: #1F1F1F;
+}
+
 body {
-  background-color: #020617; /* slate-950 */
-  color: #e2e8f0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--crick-font-sans);
+  overflow-x: hidden;
+  /* Prevent horizontal scroll from glows */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Neon Glow Effect - Crick Style */
+.neon-glow::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 0;
+  width: 200px;
+  height: 60%;
+  background: radial-gradient(circle, rgba(66, 133, 244, 0.15) 0%, rgba(66, 133, 244, 0) 70%);
+  transform: translateY(-50%) translateX(-50%);
+  pointer-events: none;
+  filter: blur(40px);
+  z-index: 0;
+}
+
+.neon-glow::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  right: 0;
+  width: 200px;
+  height: 60%;
+  background: radial-gradient(circle, rgba(66, 133, 244, 0.15) 0%, rgba(66, 133, 244, 0) 70%);
+  transform: translateY(-50%) translateX(50%);
+  pointer-events: none;
+  filter: blur(40px);
+  z-index: 0;
+}
+
+/* Clean Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  /* Subtle dark thumb */
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Glassmorphism Utilities */
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.dark .glass-panel {
+  background: #1E1F20;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.glass-pill {
+  background: rgba(235, 240, 245, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.dark .glass-pill {
+  background: #28292A;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-pill {
+  background: rgba(235, 240, 245, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+/* Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes ripple-blur {
+  0% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(66, 133, 244, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
+  }
+}
+
+.animate-ripple {
+  animation: ripple-blur 2s infinite;
+}
+
+/* Typewriter Animation */
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.typewriter {
+  overflow: hidden;
+  border-right: .15em solid orange;
+  white-space: nowrap;
+  letter-spacing: .15em;
+  animation:
+    typewriter 3.5s steps(40, end),
+    blink .75s step-end infinite;
 }
