@@ -2,18 +2,28 @@ import logging
 import uvicorn
 import datetime
 import os
-from uuid import uuid4
+import shutil
+import asyncio
+import json
+import lancedb
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from uuid import uuid4
+from typing import Optional, List, Dict, Any
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List, Dict, Any
+from fastapi.staticfiles import StaticFiles
+
 # --- Local Imports ---
 from src.models import ChatRequest, ContinueRequest
 from src.core.manager import VibingManager
 from src.core.streamer import event_stream_generator
 from src.core.monitor import codebase_registry
 from src.core.storage import generate_session_id, list_sessions_with_summary, delete_session, get_session_with_runs
+from src.core.template_indexer import TemplateIndexer
+from src.core.server_utils import transform_runs_to_messages, normalize_path
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -21,6 +31,9 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("CrickCoderAPI")
+
+# --- SERVER ROOT ---
+SERVER_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # --- Lifespan Manager ---
 @asynccontextmanager
@@ -42,155 +55,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- HELPER FUNCTIONS ---
+# Ensure public directory exists
+os.makedirs(os.path.join(SERVER_ROOT, "public", "templates"), exist_ok=True)
 
-def transform_runs_to_messages(runs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Trasforma una lista di runs Agno in una lista di ChatMessage per la UI.
-
-    Ogni run rappresenta una esecuzione di un agente in risposta a un input utente.
-    Struttura attesa di una run:
-    - input: dict con input_content (messaggio utente)
-    - events: lista di eventi (RunContent, ToolCallStarted, ToolCallCompleted)
-    - content: contenuto testuale aggregato (opzionale)
-    - agent_name: nome dell'agente
-    - created_at: timestamp
-
-    Ritorna lista di ChatMessage nel formato:
-    - id: numero (timestamp)
-    - role: 'user' o 'assistant'
-    - content: string (per messaggi utente)
-    - timeline: lista di TimelineItem (per messaggi assistant)
-    """
-    messages = []
-    message_id_counter = 1  # Simple counter for IDs
-
-    for run in runs:
-        # 1. Crea messaggio utente dall'input
-        input_data = run.get('input', {})
-        user_content = None
-
-        if isinstance(input_data, dict):
-            user_content = input_data.get('input_content') or input_data.get('message')
-        elif isinstance(input_data, str):
-            user_content = input_data
-
-        if user_content:
-            user_message = {
-                'id': message_id_counter,
-                'role': 'user',
-                'content': user_content
-            }
-            messages.append(user_message)
-            message_id_counter += 1
-
-        # 2. Crea messaggio assistant dagli eventi
-        events = run.get('events', [])
-        agent_name = run.get('agent_name', 'System')
-
-        if events or run.get('content'):
-            assistant_message = {
-                'id': message_id_counter,
-                'role': 'assistant',
-                'timeline': []
-            }
-            message_id_counter += 1
-
-            timeline = assistant_message['timeline']
-            pending_tools = {}  # Mappa tool_name -> index nella timeline
-
-            # Processa eventi in ordine
-            for event in events:
-                event_type = event.get('event', '') if isinstance(event, dict) else getattr(event, 'event', '')
-
-                # RunContent -> text timeline item
-                if event_type in ['RunContent', 'IntermediateRunContent']:
-                    content = event.get('content', '')
-                    if content:
-                        # Cerca se c'è già un item text dello stesso agente
-                        if timeline and timeline[-1]['type'] == 'text' and timeline[-1]['agent'] == agent_name:
-                            # Appendi al contenuto esistente
-                            timeline[-1]['content'] += content
-                        else:
-                            # Nuovo item text
-                            timeline.append({
-                                'type': 'text',
-                                'content': content,
-                                'agent': agent_name
-                            })
-
-                # ToolCallStarted -> tool timeline item con status running
-                elif event_type == 'ToolCallStarted':
-                    tool_data = event.get('tool', {})
-                    if isinstance(tool_data, dict):
-                        tool_name = tool_data.get('tool_name', 'unknown')
-                        tool_args = tool_data.get('tool_args', {})
-                    else:
-                        tool_name = getattr(tool_data, 'tool_name', 'unknown')
-                        tool_args = getattr(tool_data, 'tool_args', {})
-
-                    tool_item = {
-                        'type': 'tool',
-                        'tool': tool_name,
-                        'args': tool_args,
-                        'status': 'running',
-                        'agent': agent_name
-                    }
-                    timeline.append(tool_item)
-                    pending_tools[tool_name] = len(timeline) - 1
-
-                # ToolCallCompleted -> aggiorna tool a completed o converte in terminal
-                elif event_type == 'ToolCallCompleted':
-                    tool_data = event.get('tool', {})
-                    if isinstance(tool_data, dict):
-                        tool_name = tool_data.get('tool_name', 'unknown')
-                        result = str(tool_data.get('result', ''))
-                    else:
-                        tool_name = getattr(tool_data, 'tool_name', 'unknown')
-                        result = str(getattr(tool_data, 'result', ''))
-
-                    # Cerca l'ultimo tool con questo nome nello stato running
-                    tool_index = pending_tools.get(tool_name)
-                    if tool_index is not None and tool_index < len(timeline):
-                        tool_item = timeline[tool_index]
-                        if tool_item['type'] == 'tool' and tool_item['status'] == 'running':
-                            # Verifica se è un tool terminale (shell/build)
-                            is_terminal = ('Exit Code' in result or
-                                          'shell' in tool_name.lower() or
-                                          'build' in tool_name.lower())
-
-                            if is_terminal:
-                                # Converti in terminal item
-                                timeline[tool_index] = {
-                                    'type': 'terminal',
-                                    'command': tool_name,
-                                    'output': result,
-                                    'agent': agent_name
-                                }
-                            else:
-                                # Aggiorna a completed
-                                tool_item['status'] = 'completed'
-                                timeline[tool_index] = tool_item
-
-                            # Rimuovi dai pending
-                            del pending_tools[tool_name]
-
-            # Se non ci sono eventi ma c'è content, crea un item text dal content
-            if not timeline and run.get('content'):
-                timeline.append({
-                    'type': 'text',
-                    'content': run['content'],
-                    'agent': agent_name
-                })
-
-            # Aggiungi il messaggio assistant solo se ha timeline
-            if timeline:
-                messages.append(assistant_message)
-
-    return messages
+# Mount Static Files for Templates
+app.mount("/public", StaticFiles(directory=os.path.join(SERVER_ROOT, "public")), name="public")
 
 # --- ENDPOINTS ---
-
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
@@ -237,6 +108,141 @@ async def chat_endpoint(req: ChatRequest):
         
     except Exception as e:
         logger.error(f"Chat Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/templates/upload")
+async def upload_template_zip(
+    file: UploadFile = File(...),
+    project_path: Optional[str] = Query(None) # Query param, optional and ignored
+):
+    """
+    Uploads a ZIP file containing a graphic template.
+    1. Extracts ZIP
+    2. Identifies Manifest (Template ID)
+    3. Extracts Preview Image (theme_screen.png) to GLOBAL public folder
+    4. Indexes content into GLOBAL LanceDB
+    """
+    try:
+        # Save ZIP temporarily
+        temp_dir = os.path.join(SERVER_ROOT, ".temp_upload")
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_zip_path = os.path.join(temp_dir, file.filename)
+        
+        with open(temp_zip_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        async def progress_generator():
+            # USE SERVER_ROOT for Global Storage
+            indexer = TemplateIndexer(SERVER_ROOT)
+            
+            try:
+                for event in indexer.process_template_zip(temp_zip_path):
+                    # SSE Format: data: <json>\n\n
+                    yield f"data: {json.dumps(event)}\n\n"
+                    
+            except Exception as e:
+                yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+            finally:
+                if os.path.exists(temp_zip_path):
+                    os.remove(temp_zip_path)
+
+        return StreamingResponse(progress_generator(), media_type="text/event-stream")
+
+    except Exception as e:
+        logger.error(f"Upload Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/templates")
+def list_templates(project_path: str = None):
+    """
+    Lists all installed templates by checking GLOBAL LanceDB tables and available preview images.
+    Arg 'project_path' is ignored as templates are global.
+    """
+    try:
+        # USE SERVER_ROOT (Global)
+        db_path = os.path.join(SERVER_ROOT, "knowledge_base", "templates_db")
+        public_templates = os.path.join(SERVER_ROOT, "public", "templates")
+        
+        templates = []
+        
+        # 1. Get List from DB (if exists)
+        if os.path.exists(db_path):
+            try:
+                db = lancedb.connect(db_path)
+                table_names = db.table_names()
+                
+                for name in table_names:
+                    # Check for preview image
+                    public_dir = os.path.join(public_templates, name)
+                    preview_path = os.path.join(public_dir, "theme_screen.png")
+                    manifest_path = os.path.join(public_dir, "manifest.json")
+                    
+                    has_preview = os.path.exists(preview_path)
+                    
+                    # Default Metadata
+                    metadata = {
+                        "name": name.replace("-", " ").title(),
+                        "description": "",
+                        "author": "",
+                        "version": ""
+                    }
+
+                    # Read Manifest if exists
+                    if os.path.exists(manifest_path):
+                        try:
+                            with open(manifest_path, "r", encoding="utf-8") as f:
+                                manifest_data = json.load(f)
+                                metadata.update(manifest_data) # Override defaults
+                        except Exception as e:
+                            logger.warning(f"Error reading manifest for {name}: {e}")
+                    
+                    templates.append({
+                        "id": name,
+                        "name": metadata.get("name"),
+                        "description": metadata.get("description"),
+                        "author": metadata.get("author"),
+                        "version": metadata.get("version"),
+                        "preview_url": f"/public/templates/{name}/theme_screen.png" if has_preview else None,
+                        "installed_at": None
+                    })
+            except Exception as e:
+                logger.error(f"Error reading LanceDB: {e}")
+
+        return {"templates": templates}
+    except Exception as e:
+         logger.error(f"List Templates Error: {e}", exc_info=True)
+         raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/templates/{template_id}")
+def delete_template(template_id: str):
+    """
+    Deletes a template:
+    1. Removes the public/templates/<id> directory.
+    2. Drops the table from LanceDB.
+    """
+    try:
+        # 1. Delete Public Files
+        public_dir = os.path.join(SERVER_ROOT, "public", "templates", template_id)
+        if os.path.exists(public_dir):
+            shutil.rmtree(public_dir)
+            logger.info(f"Deleted public assets for {template_id}")
+
+        # 2. Delete from DB
+        db_path = os.path.join(SERVER_ROOT, "knowledge_base", "templates_db")
+        if os.path.exists(db_path):
+            try:
+                db = lancedb.connect(db_path)
+                db.drop_table(template_id)
+                logger.info(f"Dropped table {template_id}")
+            except Exception as e:
+                # If table doesn't exist, we can ignore (maybe it was partial install)
+                logger.warning(f"Could not drop table {template_id}: {e}")
+
+        return {"status": "success", "message": f"Template {template_id} deleted."}
+
+    except Exception as e:
+        logger.error(f"Delete Template Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -307,9 +313,6 @@ def health_check():
 def get_agents():
     """Returns the list of available agents."""
     return {"agents": ["ARCHITECT", "CODER"]}
-
-def normalize_path(project_path: str) -> str:
-    return os.path.abspath(project_path.strip('"').strip("'"))
 
 if __name__ == "__main__":
     # Reload=True allows hot-reloading during development

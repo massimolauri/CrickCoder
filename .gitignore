@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+*.spec
+
+# Node / Frontend
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+crick-ui/dist/
+crick-ui/node_modules/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# CrickCoder Specific
+knowledge_base/
+public/templates/
+.temp_extract/
+.temp_upload/
+test_template_run/
+verify_template.py
+test_server.py
+*.zip

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Menu, ChevronRight, Settings, Folder
+  Menu, ChevronRight, Settings, Folder, LayoutTemplate
 } from 'lucide-react';
 
 // Import servizi e hook
@@ -12,6 +12,7 @@ import { projectStorage, llmSettingsStorage, type LLMSettings } from '@/utils/st
 // Import componenti UI
 import SessionList from '@/components/SessionList/SessionList';
 import HealthIndicator from '@/components/HealthStatus/HealthIndicator';
+import TemplatesPanel from '@/components/Templates/TemplatesPanel';
 // Import componenti chat
 import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/chat/ChatInput';
@@ -35,6 +36,7 @@ export default function CrickInterface() {
     api_key: "",
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [showSessions, setShowSessions] = useState(true);
   // State for selected session badge
   const [sessionBadge, setSessionBadge] = useState<{
@@ -48,8 +50,8 @@ export default function CrickInterface() {
   });
 
   // Hook per chat, sessioni e health
-  const onStreamStart = useCallback(() => {}, []);
-  const onStreamEnd = useCallback(() => {}, []);
+  const onStreamStart = useCallback(() => { }, []);
+  const onStreamEnd = useCallback(() => { }, []);
   const onError = useCallback((error: Error) => console.error('Chat error:', error), []);
 
   const chat = useChat({
@@ -190,18 +192,33 @@ export default function CrickInterface() {
       {/* Left sidebar */}
       <div className={`w-16 flex flex-col items-center py-6 ${THEME.sidebar} hidden sm:flex z-20`}>
         <button
-          onClick={() => { setShowSessions(!showSessions); setShowSettings(false); }}
+          onClick={() => { setShowSessions(!showSessions); setShowSettings(false); setShowTemplates(false); }}
           className="p-2.5 bg-white/5 rounded-xl mb-6 border border-white/10 shadow-lg hover:bg-white/10 transition-colors cursor-pointer"
         >
           <Menu className="w-6 h-6 text-emerald-400" />
         </button>
+
+        {/* Templates Button */}
+        <button
+          onClick={() => { setShowTemplates(!showTemplates); setShowSettings(false); setShowSessions(false); }}
+          className={`p-2.5 rounded-xl mb-4 border transition-colors cursor-pointer relative group ${showTemplates ? 'bg-purple-500/20 border-purple-500/50' : 'bg-transparent border-transparent hover:bg-white/5'}`}
+          title="Templates Library"
+        >
+          <LayoutTemplate className={`w-6 h-6 ${showTemplates ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'}`} />
+          {!showTemplates && (
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-[#0d1117] border border-[#30363d] text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+              Templates
+            </span>
+          )}
+        </button>
+
         {/* Flexible space to push content to bottom */}
         <div className="flex-1" />
 
         {/* Settings button and indicators (at bottom) */}
         <div className="mt-auto flex flex-col items-center gap-3 py-4">
           <button
-            onClick={() => { setShowSettings(!showSettings); setShowSessions(false); }}
+            onClick={() => { setShowSettings(!showSettings); setShowSessions(false); setShowTemplates(false); }}
             className={`p-3 rounded-xl transition-all ${showSettings ? 'bg-[#1f6feb]/20 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
             title="Settings"
           >
@@ -270,7 +287,7 @@ export default function CrickInterface() {
                   <label className="text-sm text-slate-400">Provider</label>
                   <select
                     value={llmSettings.provider}
-                    onChange={(e) => setLlmSettings({...llmSettings, provider: e.target.value})}
+                    onChange={(e) => setLlmSettings({ ...llmSettings, provider: e.target.value })}
                     className="w-full bg-[#010409] border border-[#30363d] rounded px-3 py-2 text-sm text-slate-300 outline-none focus:border-[#1f6feb]/50 transition-colors"
                   >
                     <option value="DeepSeek">DeepSeek</option>
@@ -290,7 +307,7 @@ export default function CrickInterface() {
                   <input
                     type="text"
                     value={llmSettings.model_id}
-                    onChange={(e) => setLlmSettings({...llmSettings, model_id: e.target.value})}
+                    onChange={(e) => setLlmSettings({ ...llmSettings, model_id: e.target.value })}
                     className="w-full bg-[#010409] border border-[#30363d] rounded px-3 py-2 text-sm text-slate-300 outline-none focus:border-[#1f6feb]/50 transition-colors"
                     placeholder="deepseek-chat, gpt-4o, claude-3-5-sonnet"
                   />
@@ -302,7 +319,7 @@ export default function CrickInterface() {
                   <input
                     type="password"
                     value={llmSettings.api_key}
-                    onChange={(e) => setLlmSettings({...llmSettings, api_key: e.target.value})}
+                    onChange={(e) => setLlmSettings({ ...llmSettings, api_key: e.target.value })}
                     className="w-full bg-[#010409] border border-[#30363d] rounded px-3 py-2 text-sm text-slate-300 outline-none focus:border-emerald-500/50 transition-colors"
                     placeholder="sk-..."
                   />
@@ -323,14 +340,21 @@ export default function CrickInterface() {
           </div>
         )}
 
+        {/* Templates Panel */}
+        {showTemplates && (
+          <TemplatesPanel
+            projectPath={projectPath}
+            onClose={() => setShowTemplates(false)}
+          />
+        )}
+
         {/* Session selection badge */}
         {sessionBadge.visible && sessionBadge.sessionId && (
           <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-full border shadow-lg ${
-              sessionBadge.isNew
+            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-full border shadow-lg ${sessionBadge.isNew
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-[#1f6feb]/10 border-[#1f6feb]/30 text-[#58a6ff]'
-            }`}>
+              }`}>
               <div className={`w-2 h-2 rounded-full ${sessionBadge.isNew ? 'bg-emerald-500 animate-pulse' : 'bg-[#58a6ff]'}`} />
               <span className="text-sm font-medium">
                 {sessionBadge.isNew ? 'New session created' : 'Session selected'}
@@ -347,7 +371,7 @@ export default function CrickInterface() {
           <div className="max-w-4xl mx-auto">
             {chat.messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-                
+
                 <h2 className="text-2xl font-bold text-slate-200 mb-2">Crick<span className="text-emerald-500">Coder</span></h2>
                 <p className="text-slate-400 max-w-md">
                   Start a new conversation with the AI agent team to develop, fix, or improve your project.
