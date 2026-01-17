@@ -148,10 +148,10 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
     };
 
     return (
-        <div className="absolute inset-x-0 bottom-0 top-16 z-20 bg-white/95 dark:bg-[#0d1117]/95 backdrop-blur-xl border-t border-gray-100 dark:border-white/5 overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="absolute inset-x-0 bottom-0 top-16 z-20 bg-white/95 dark:bg-[#1e1e1e]/95 backdrop-blur-xl border-t border-gray-100 dark:border-[#3e3e42] overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 fade-in duration-300">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-[#0d1117]/50">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 dark:border-[#3e3e42] bg-white/50 dark:bg-[#1e1e1e]/50">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                         <LayoutTemplate className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -174,7 +174,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                 <div className="max-w-6xl mx-auto">
 
                     {/* Upload Section */}
-                    <div className="mb-10 bg-crick-surface border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl p-8 text-center hover:border-purple-300 dark:hover:border-purple-500/50 hover:bg-purple-50/30 dark:hover:bg-purple-900/10 transition-all group relative overflow-hidden">
+                    <div className="mb-10 bg-crick-surface dark:bg-[#252526] border-2 border-dashed border-gray-200 dark:border-[#3e3e42] rounded-2xl p-8 text-center hover:border-purple-300 dark:hover:border-purple-500/50 hover:bg-purple-50/30 dark:hover:bg-purple-900/10 transition-all group relative overflow-hidden">
                         <input
                             type="file"
                             accept=".zip"
@@ -194,7 +194,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
 
                     {/* Progress & Logs */}
                     {(uploading || logs.length > 0) && (
-                        <div className="mb-10 bg-crick-surface border border-gray-200 dark:border-white/10 rounded-xl p-4 font-mono text-xs shadow-inner">
+                        <div className="mb-10 bg-crick-surface dark:bg-[#252526] border border-gray-200 dark:border-[#3e3e42] rounded-xl p-4 font-mono text-xs shadow-inner">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-gray-500 font-bold uppercase tracking-wider">Installation Log</span>
                                 <span className="text-purple-600 dark:text-purple-400">{progress}%</span>
@@ -228,7 +228,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                     {/* Gallery Grid */}
                     <h3 className="text-lg font-bold text-crick-text-primary mb-4 flex items-center gap-2">
                         Installed Templates
-                        <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-white/10">{templates.length}</span>
+                        <span className="text-xs font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-[#3e3e42]">{templates.length}</span>
                     </h3>
 
                     {loading ? (
@@ -242,9 +242,9 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {templates.map(tpl => (
-                                <div key={tpl.id} className="bg-white dark:bg-[#161b22] border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1">
+                                <div key={tpl.id} className="bg-white dark:bg-[#252526] border border-gray-100 dark:border-[#3e3e42] rounded-xl overflow-hidden group hover:border-purple-200 dark:hover:border-purple-500/30 transition-all shadow-sm hover:shadow-lg hover:-translate-y-1">
                                     {/* Preview Image */}
-                                    <div className="aspect-video bg-gray-50 dark:bg-gray-900 relative overflow-hidden border-b border-gray-100 dark:border-white/5 group-hover:opacity-100 transition-opacity">
+                                    <div className="aspect-video bg-gray-50 dark:bg-[#2d2d2d] relative overflow-hidden border-b border-gray-100 dark:border-[#3e3e42] group-hover:opacity-100 transition-opacity">
                                         {tpl.preview_url ? (
                                             <img
                                                 src={tpl.preview_url}
@@ -274,7 +274,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                                         <div className="flex justify-between items-start mb-1">
                                             <h4 className="font-bold text-crick-text-primary truncate pr-2" title={tpl.name}>{tpl.name}</h4>
                                             {tpl.version && (
-                                                <span className="text-[10px] bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/10">
+                                                <span className="text-[10px] bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 dark:border-[#3e3e42]">
                                                     v{tpl.version}
                                                 </span>
                                             )}
@@ -290,7 +290,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                                             </p>
                                         )}
 
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-green-600 dark:text-green-400 border-t border-gray-100 dark:border-white/5 pt-3 font-medium">
+                                        <div className="flex items-center gap-2 mt-2 text-xs text-green-600 dark:text-green-400 border-t border-gray-100 dark:border-[#3e3e42] pt-3 font-medium">
                                             <CheckCircle size={12} />
                                             <span>Ready for Architect Agent</span>
                                         </div>

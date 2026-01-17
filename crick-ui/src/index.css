@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --crick-font-sans: "Inter", system-ui, sans-serif;
@@ -12,15 +13,20 @@
   --btn-primary-text: #ffffff;
 }
 
+
 .dark {
-  /* Dark Theme - Gemini Material Style */
-  --bg-primary: #131314;
-  --bg-surface: #1E1F20;
-  --text-primary: #E3E3E3;
-  --text-secondary: #A8C7FA;
-  /* Light Blue tint for secondary text often used in Gemini */
-  --btn-primary-bg: #E3E3E3;
-  --btn-primary-text: #1F1F1F;
+  /* Dark Theme - VS Code Style */
+  --bg-primary: #1e1e1e;
+  /* VS Code Editor BG */
+  --bg-surface: #252526;
+  /* VS Code Sidebar BG */
+  --text-primary: #cccccc;
+  /* VS Code FG */
+  --text-secondary: #949494;
+  /* VS Code Secondary Text */
+
+  --btn-primary-bg: #cccccc;
+  --btn-primary-text: #1e1e1e;
 }
 
 body {
@@ -177,4 +183,28 @@ body {
   animation:
     typewriter 3.5s steps(40, end),
     blink .75s step-end infinite;
+}
+
+@keyframes bounce-slow {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 1.4s infinite ease-in-out both;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
 }

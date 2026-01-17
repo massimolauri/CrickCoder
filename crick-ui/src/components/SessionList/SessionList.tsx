@@ -120,7 +120,7 @@ const SessionList: React.FC<SessionListProps> = ({
         </button>
       )}
 
-      <div className="px-4 py-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+      <div className="px-4 py-2 text-[10px] font-bold text-crick-text-secondary uppercase tracking-widest">
         Recent Sessions ({sessions.sessionCount})
       </div>
 
@@ -134,8 +134,8 @@ const SessionList: React.FC<SessionListProps> = ({
             <div
               key={session.session_id}
               className={`px-4 py-3 rounded-2xl cursor-pointer transition-all border group relative overflow-hidden ${isSelected
-                ? 'bg-blue-50/80 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 shadow-sm'
-                : 'bg-transparent border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:border-gray-100 dark:hover:border-white/5'
+                ? 'bg-blue-50 dark:bg-blue-500/20 border-blue-200 dark:border-blue-500/30'
+                : 'bg-transparent border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:border-gray-100 dark:hover:border-[#3e3e42]'
                 }`}
               onClick={() => onSelectSession?.(session.session_id)}
             >
@@ -145,7 +145,7 @@ const SessionList: React.FC<SessionListProps> = ({
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center mb-1 flex-1 min-w-0 pl-2">
-                  <span className={`text-sm truncate overflow-hidden transition-colors ${isSelected ? 'font-semibold text-crick-accent' : 'font-medium text-crick-text-primary group-hover:text-crick-text-primary'}`}>
+                  <span className={`text-sm truncate overflow-hidden transition-colors ${isSelected ? 'font-semibold text-blue-600 dark:text-blue-300' : 'font-medium text-crick-text-primary group-hover:text-crick-text-primary'}`}>
                     {getSummaryText(session.summary) || session.session_id.slice(0, 8)}
                   </span>
                 </div>
@@ -180,7 +180,7 @@ const SessionList: React.FC<SessionListProps> = ({
               </div>
 
               {showLastRequest && (
-                <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 truncate pl-2 opacity-60 group-hover:opacity-100 transition-opacity font-mono">
+                <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 truncate pl-2 opacity-80 group-hover:opacity-100 transition-opacity font-mono">
                   {lastRequestText}
                 </div>
               )}

@@ -38,7 +38,7 @@ const ChatInput = React.memo(function ChatInput(props: ChatInputProps) {
   const isButtonDisabled = !props.streaming && (props.disabled || !localValue.trim());
 
   return (
-    <div className={`max-w-4xl mx-auto backdrop-blur-xl bg-white/80 dark:bg-[#1E1F20] border border-gray-200 dark:border-none shadow-2xl rounded-2xl p-2 flex items-center gap-3 transition-all focus-within:ring-1 focus-within:ring-crick-accent/30`}>
+    <div className={`max-w-4xl mx-auto backdrop-blur-xl bg-crick-surface border border-gray-200 dark:border-[#3e3e42] shadow-2xl rounded-2xl p-2 flex items-center gap-3 transition-all focus-within:ring-1 focus-within:ring-crick-accent/30`}>
       <div className="pl-3 text-crick-text-secondary">
         <ChevronRight size={18} />
       </div>

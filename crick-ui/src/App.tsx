@@ -212,10 +212,10 @@ export default function CrickInterface() {
     <div className={`flex h-screen w-full ${THEME.bg} text-crick-text-primary font-sans overflow-hidden selection:bg-crick-accent/30 selection:text-crick-accent`}>
       <div className="neon-glow" />
       {/* Left sidebar */}
-      <div className={`w-18 flex flex-col items-center py-6 bg-crick-surface dark:bg-[#1E1F20] hidden sm:flex z-20`}>
+      <div className={`w-18 flex flex-col items-center py-6 bg-crick-surface hidden sm:flex z-20`}>
         <button
           onClick={() => { setShowSessions(!showSessions); setShowSettings(false); setShowTemplates(false); }}
-          className="p-3 bg-crick-surface/80 dark:bg-white/5 rounded-full mb-6 border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer group text-gray-600 dark:text-gray-300"
+          className="p-3 bg-crick-surface/80 dark:bg-white/5 rounded-full mb-6 border border-gray-200 dark:border-[#3e3e42] shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer group text-gray-600 dark:text-gray-300"
         >
           <Menu className="w-5 h-5 text-gray-600 group-hover:text-crick-accent" />
         </button>
@@ -275,14 +275,14 @@ export default function CrickInterface() {
       {/* Contenuto principale */}
       <div className="flex-1 flex flex-col relative z-0">
         {/* Header */}
-        <header className="h-16 border-b border-gray-100 dark:border-transparent flex items-center justify-between px-8 bg-white/70 dark:bg-[#131314] z-10 sticky top-0 transition-colors">
+        <header className="h-16 border-b border-gray-100 dark:border-[#3e3e42] flex items-center justify-between px-8 bg-crick-bg z-10 sticky top-0 transition-colors">
           <div className="flex items-center gap-3">
             <div className="flex items-center">
               <span className="font-bold text-lg text-crick-text-primary tracking-tight typewriter inline-block">
                 crick<span className="text-crick-accent">coder</span>
               </span>
             </div>
-            <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/10">
+            <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#3e3e42]">
               <Folder size={12} className="text-gray-400" /> {projectPath ? (projectPath.length > 50 ? '...' + projectPath.slice(-50) : projectPath) : 'NO PROJECT LINKED'}
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function CrickInterface() {
 
         {/* Settings panel */}
         {showSettings && (
-          <div className="absolute top-16 left-0 right-0 z-30 glass-panel border-b border-gray-100 dark:border-white/5 p-6 animate-in slide-in-from-top-2">
+          <div className="absolute top-16 left-0 right-0 z-30 glass-panel border-b border-gray-100 dark:border-[#3e3e42] p-6 animate-in slide-in-from-top-2">
             <div className="max-w-2xl mx-auto space-y-6">
               {/* Sezione Project Root Path */}
               <div className="space-y-3">
@@ -303,7 +303,7 @@ export default function CrickInterface() {
                       const newPath = e.target.value;
                       setProjectPath(newPath);
                     }}
-                    className="flex-1 bg-crick-surface border border-gray-200 dark:border-white/10 rounded-full px-4 py-2 text-sm font-mono text-crick-text-primary outline-none focus:border-crick-accent transition-colors pl-4"
+                    className="flex-1 bg-crick-surface border border-gray-200 dark:border-[#3e3e42] rounded-full px-4 py-2 text-sm font-mono text-crick-text-primary outline-none focus:border-crick-accent transition-colors pl-4"
                     placeholder="e.g. C:/Dev/MyProject"
                   />
                 </div>
@@ -437,7 +437,7 @@ export default function CrickInterface() {
         </div>
 
         {/* Chat input */}
-        <div className="p-4 bg-white/80 dark:bg-[#131314] backdrop-blur-md border-t border-gray-100 dark:border-none z-20">
+        <div className="p-4 bg-crick-bg border-t border-gray-100 dark:border-[#3e3e42] z-20">
           <ChatInput
             onSubmit={handleSubmit}
             onCancel={handleCancel}
@@ -450,7 +450,7 @@ export default function CrickInterface() {
           <div className="max-w-4xl mx-auto mt-3 flex items-center justify-between">
             {/* Agent selector (left) */}
             <div className="flex items-center gap-2">
-              <div className="flex bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-full p-1 shadow-inner">
+              <div className="flex bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-[#3e3e42] rounded-full p-1 shadow-inner">
                 <button
                   onClick={() => chat.setSelectedAgentId("ARCHITECT")}
                   className={`relative px-6 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${chat.selectedAgentId === "ARCHITECT" ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20 animate-ripple" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white/50"}`}

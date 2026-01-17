@@ -18,15 +18,15 @@ export function renderTimelineItem(item: TimelineItem, index: number): React.Rea
       return (
         <div key={index} className="flex flex-col animate-in fade-in duration-300">
           <AgentHeader name={item.agent} />
-          <div className="text-sm text-crick-text-primary leading-relaxed font-sans mb-2 pl-1 markdown-body">
+          <div className="text-sm text-crick-text-primary leading-relaxed font-sans mb-2 pl-1">
             <ReactMarkdown
               remarkPlugins={[]}
               components={{
                 code({ node, inline, className, children, ...props }: any) {
                   const match = /language-(\w+)/.exec(className || '')
                   return !inline && match ? (
-                    <div className="my-3 rounded-lg overflow-hidden border border-gray-200 dark:border-[#30363d] bg-gray-50 dark:bg-[#0d1117] shadow-sm">
-                      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-[#161b22] border-b border-gray-200 dark:border-[#30363d]">
+                    <div className="my-3 rounded-lg overflow-hidden border border-gray-200 dark:border-[#3e3e42] bg-gray-50 dark:bg-crick-bg shadow-sm">
+                      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-crick-surface border-b border-gray-200 dark:border-[#3e3e42]">
                         <div className="flex items-center gap-2">
                           <FileText size={12} className="text-blue-500 dark:text-blue-400" />
                           <span className="text-xs text-gray-500 dark:text-slate-400 font-mono font-medium">{match[1]}</span>
@@ -37,14 +37,19 @@ export function renderTimelineItem(item: TimelineItem, index: number): React.Rea
                       </SyntaxHighlighter>
                     </div>
                   ) : (
-                    <code className="bg-gray-100 dark:bg-[#1f6feb]/20 text-pink-600 dark:text-[#58a6ff] px-1.5 py-0.5 rounded text-xs font-mono border border-gray-200 dark:border-[#1f6feb]/30 font-medium" {...props}>{children}</code>
+                    <code className="bg-gray-100 dark:bg-blue-500/20 text-pink-600 dark:text-blue-300 px-1.5 py-0.5 rounded text-xs font-mono border border-gray-200 dark:border-blue-500/30 font-medium" {...props}>{children}</code>
                   )
                 },
+                h1: ({ children }: any) => <h1 className="text-xl font-bold mb-4 mt-6 text-crick-text-primary border-b border-gray-200 dark:border-[#3e3e42] pb-2">{children}</h1>,
+                h2: ({ children }: any) => <h2 className="text-lg font-bold mb-3 mt-5 text-crick-text-primary">{children}</h2>,
+                h3: ({ children }: any) => <h3 className="text-base font-bold mb-2 mt-4 text-crick-text-primary">{children}</h3>,
+                h4: ({ children }: any) => <h4 className="text-sm font-bold mb-2 mt-3 text-crick-text-primary">{children}</h4>,
                 ul: ({ children }: any) => <ul className="list-disc pl-5 my-2 space-y-1 text-crick-text-primary">{children}</ul>,
                 ol: ({ children }: any) => <ol className="list-decimal pl-5 my-2 space-y-1 text-crick-text-primary">{children}</ol>,
+                li: ({ children }: any) => <li className="text-crick-text-primary marker:text-gray-400 dark:marker:text-gray-600">{children}</li>,
                 a: ({ href, children }: any) => <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-emerald-400 hover:underline font-medium">{children}</a>,
                 p: ({ children }: any) => <p className="mb-2 last:mb-0 text-crick-text-primary">{children}</p>,
-                strong: ({ children }: any) => <strong className="font-bold text-gray-900 dark:text-white">{children}</strong>
+                strong: ({ children }: any) => <strong className="font-bold text-crick-text-primary">{children}</strong>
               }}
             >
               {item.content}
