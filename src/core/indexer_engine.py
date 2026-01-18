@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 # --- Agno Imports ---
 from agno.knowledge import Knowledge
 from agno.vectordb.lancedb import LanceDb, SearchType
-from agno.knowledge.embedder.sentence_transformer import SentenceTransformerEmbedder
+from src.core.embedder import get_shared_embedder
 
 # --- Chunking Imports ---
 from langchain_text_splitters import RecursiveCharacterTextSplitter, Language
@@ -32,12 +32,9 @@ class UniversalCodeIndexer:
         self.SMALL_FILE_THRESHOLD = 30000 
 
         # -----------------------------------------------------------
-        # 2. EMBEDDER: Jina v2 (Nuovo Embedder Richiesto)
+        # 2. EMBEDDER: Jina v2 (Shared Singleton)
         # -----------------------------------------------------------
-        self.embedder = SentenceTransformerEmbedder(
-            id="jinaai/jina-embeddings-v2-base-code",
-            dimensions=768
-        )
+        self.embedder = get_shared_embedder()
         
         # -----------------------------------------------------------
         # 3. VECTOR DB

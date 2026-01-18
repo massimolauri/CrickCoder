@@ -8,35 +8,23 @@ from src.prompts.loader import load_prompt
 from src.models import LLMSettings
 from src.tools.crickcoder_template_tools import CrickCoderTemplateTools
 
-def build_architect(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None):
+def build_planner(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None):
     """
-    Costruisce l'agente Architect con consapevolezza della modalità di approvazione.
-
-    Args:
-        project_root: Root del progetto.
-        session_id: ID sessione.
-        auto_approval: Flag per God Mode.
-        llm_settings: Configurazione LLM opzionale.
+    Costruisce l'agente Planner.
+    Identico all'Architect come configurazione, ma usa 'planner.md' e ha un ruolo diverso.
     """
-    # 1. Gestione Storage (Se non passato, lo crea)
     storage = get_agent_storage(project_root=project_root) 
-
-    # 2. Context OS
+    
     current_os = platform.system()
-    os_release = platform.release()
-    os_context = (
-        f"SYSTEM CONTEXT: Host OS is {current_os} ({os_release}). "
-        "Ensure all planned shell commands are valid for this OS syntax."
-    )
+    os_context = f"SYSTEM CONTEXT: Host OS is {current_os}."
 
     instructions_list = [
-            load_prompt("architect.md"),
+            load_prompt("planner.md"),
             os_context
         ]
 
-    # 5. Configurazione Modello LLM
     if not llm_settings:
-        raise ValueError("llm_settings è obbligatorio per costruire l'agente Architect")
+        raise ValueError("llm_settings è obbligatorio per costruire l'agente Planner")
 
     model = build_model_for_runtime(
         provider=llm_settings.provider,
@@ -45,13 +33,12 @@ def build_architect(project_root: str, session_id: str, auto_approval: bool = Fa
         api_key=llm_settings.api_key
     )
 
-    # 6. Costruzione Agente
     return Agent(
-        name="Architect",
-        role="System Architect",
+        name="Planner",
+        role="Technical Lead",
         model=model,
         knowledge=get_shared_knowledge(project_root),
-        search_knowledge=True,
+        search_knowledge=True, # Il Planner deve sapere cosa c'è già
         db=storage,
         user_id="crickdeveloper",
         session_id=session_id,

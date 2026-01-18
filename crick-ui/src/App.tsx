@@ -444,6 +444,8 @@ export default function CrickInterface() {
             streaming={chat.streaming}
             disabled={chat.streaming || health.isOffline}
             placeholder={placeholder}
+            selectedThemeId={chat.selectedThemeId}
+            onThemeSelect={chat.setSelectedThemeId}
           />
 
           {/* Controls below chat */}
@@ -452,10 +454,10 @@ export default function CrickInterface() {
             <div className="flex items-center gap-2">
               <div className="flex bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-[#3e3e42] rounded-full p-1 shadow-inner">
                 <button
-                  onClick={() => chat.setSelectedAgentId("ARCHITECT")}
-                  className={`relative px-6 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${chat.selectedAgentId === "ARCHITECT" ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20 animate-ripple" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white/50"}`}
+                  onClick={() => chat.setSelectedAgentId("PLANNER")}
+                  className={`relative px-6 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${chat.selectedAgentId === "PLANNER" ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20 animate-ripple" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white/50"}`}
                 >
-                  ARCHITECT
+                  PLANNER
                 </button>
                 <button
                   onClick={() => chat.setSelectedAgentId("CODER")}
@@ -469,8 +471,8 @@ export default function CrickInterface() {
                   Talking to: {chat.selectedAgentId}
                 </span>
                 <span className="ml-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                  {chat.selectedAgentId === "ARCHITECT"
-                    ? "Analyzes codebase, designs architecture - does not write code"
+                  {chat.selectedAgentId === "PLANNER"
+                    ? "Breaks down requests into logical tasks - Technical Lead"
                     : "Writes and implements code - switch to Coder to write the project"}
                 </span>
               </div>

@@ -44,7 +44,10 @@ class CrickCoderFileTools(Toolkit):
         
         if all or enable_save_file:
             tools.append(self.save_file)
-            if enable_confirmation: tools_needing_confirmation.append("save_file")
+            tools.append(self.append_to_file)
+            if enable_confirmation: 
+                tools_needing_confirmation.append("save_file")
+                tools_needing_confirmation.append("append_to_file")
 
         if all or enable_read_file:
             tools.append(self.read_file)
@@ -99,6 +102,26 @@ class CrickCoderFileTools(Toolkit):
         except Exception as e:
             log_error(f"Error saving to file: {e}")
             return f"Error saving to file: {e}"
+
+    def append_to_file(self, contents: str, file_name: str, encoding: str = "utf-8") -> str:
+        """Appends the contents to a file called `file_name`."""
+        try:
+            safe, file_path = self.check_escape(file_name)
+            if not safe:
+                log_error(f"Attempted to append to unsafe file: {file_name}")
+                return "Error: Path is outside base directory."
+            
+            if not file_path.parent.exists():
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(file_path, "a", encoding=encoding) as f:
+                f.write(contents)
+            
+            log_debug(f"Appended to: {file_path}")
+            return f"Appended to {file_name} successfully."
+        except Exception as e:
+            log_error(f"Error appending to file: {e}")
+            return f"Error appending to file: {e}"
 
     def replace_file_chunk(self, file_name: str, search_text: str, replace_text: str, encoding: str = "utf-8") -> str:
         """Replaces a specific block of text in a file with new text."""

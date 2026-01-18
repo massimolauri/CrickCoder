@@ -14,7 +14,7 @@ export interface LLMSettings {
 export interface ChatRequest {
   message: string;
   project_path: string;
-  agent_id: "ARCHITECT" | "CODER";
+  agent_id: "ARCHITECT" | "CODER" | "PLANNER";
   session_id?: string | null;
   auto_approval?: boolean;
   llm_settings?: LLMSettings; // Impostazioni LLM opzionali
@@ -71,6 +71,22 @@ export interface SessionsResponse {
 export interface StatusResponse {
   active_projects: string[];
   count: number;
+}
+
+/** Template grafico */
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  preview_url: string | null;
+  installed_at: string | null;
+}
+
+/** Risposta lista template */
+export interface TemplatesResponse {
+  templates: Template[];
 }
 
 // ==================== SSE EVENTS ====================

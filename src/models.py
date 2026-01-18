@@ -9,7 +9,7 @@ class RoutingDecision(BaseModel):
         ..., 
         description="Step-by-step reasoning for the decision."
     )
-    next_speaker: Literal["ARCHITECT", "CODER", "CHAT"] = Field(
+    next_speaker: Literal["ARCHITECT", "CODER", "PLANNER", "CHAT"] = Field(
         ..., 
         description="The agent assigned to the next turn."
     )
@@ -31,7 +31,7 @@ class ChatRequest(BaseModel):
     """Payload for starting a new chat turn."""
     message: str
     project_path: str
-    agent_id: Literal["ARCHITECT", "CODER"]
+    agent_id: Literal["ARCHITECT", "CODER", "PLANNER"]
     session_id: Optional[str] = None
     # If True, Coder executes immediately (God Mode).
     # If False, Coder pauses on file/shell operations (Safe Mode).

@@ -5,6 +5,7 @@ from agno.agent import Agent
 from src.core.factory_models import build_model_for_runtime
 from src.tools.crickcoder_file_tools import CrickCoderFileTools
 from src.tools.crickcoder_shell_tools import CrickCoderShellTools
+from src.tools.crickcoder_template_tools import CrickCoderTemplateTools
 from src.core.knowledge import get_shared_knowledge
 from src.core.storage import get_agent_storage
 from src.prompts.loader import load_prompt
@@ -73,7 +74,8 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         enable_session_summaries=True,
         tools=[
             file_tool,
-            shell_tool
+            shell_tool,
+            CrickCoderTemplateTools(project_root=project_root)
         ],
         instructions=[
             load_prompt("coder.md"),

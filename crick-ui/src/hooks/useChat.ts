@@ -5,15 +5,15 @@ import { llmSettingsStorage } from '@/utils/storage';
 import type { ChatMessage, ChatEvent, LLMSettings } from '@/types/api.types';
 
 /** Recupera agentId da localStorage per una sessione */
-function getAgentIdForSession(sessionId: string | null): "ARCHITECT" | "CODER" {
-  if (!sessionId) return "ARCHITECT";
+function getAgentIdForSession(sessionId: string | null): "PLANNER" | "CODER" {
+  if (!sessionId) return "PLANNER";
   const key = `crick_agent_id_${sessionId}`;
   const stored = localStorage.getItem(key);
-  return (stored === "ARCHITECT" || stored === "CODER") ? stored : "ARCHITECT";
+  return (stored === "PLANNER" || stored === "CODER") ? stored : "PLANNER";
 }
 
 /** Salva agentId in localStorage per una sessione */
-function saveAgentIdForSession(sessionId: string | null, value: "ARCHITECT" | "CODER"): void {
+function saveAgentIdForSession(sessionId: string | null, value: "PLANNER" | "CODER"): void {
   if (!sessionId) return;
   const key = `crick_agent_id_${sessionId}`;
   localStorage.setItem(key, value);
@@ -25,11 +25,12 @@ export interface ChatState {
   streaming: boolean;
   currentSessionId: string | null;
   error: string | null;
-  selectedAgentId: "ARCHITECT" | "CODER";
+  selectedAgentId: "PLANNER" | "CODER";
   llmSettings: LLMSettings;
   pausedRunId: string | null;
   pausedAgentName: string | null;
   pausedTool: string | null;
+  selectedThemeId: string | null;
 }
 
 /** Opzioni per useChat */
@@ -63,7 +64,7 @@ export function useChat(options: UseChatOptions) {
     sessionService.getCurrentSession(projectPath)
   );
   const [error, setError] = useState<string | null>(null);
-  const [selectedAgentId, setSelectedAgentIdState] = useState<"ARCHITECT" | "CODER">(
+  const [selectedAgentId, setSelectedAgentIdState] = useState<"PLANNER" | "CODER">(
     getAgentIdForSession(sessionService.getCurrentSession(projectPath))
   );
   const [llmSettings, setLlmSettings] = useState<LLMSettings>(
@@ -78,10 +79,13 @@ export function useChat(options: UseChatOptions) {
   const [pausedAgentName, setPausedAgentName] = useState<string | null>(null);
   const [pausedTool, setPausedTool] = useState<string | null>(null);
 
+  // Theme state
+  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   /** Aggiorna selectedAgentId per la sessione corrente */
-  const setSelectedAgentId = useCallback((value: "ARCHITECT" | "CODER") => {
+  const setSelectedAgentId = useCallback((value: "PLANNER" | "CODER") => {
     saveAgentIdForSession(currentSessionId, value);
     setSelectedAgentIdState(value);
   }, [currentSessionId]);
@@ -132,11 +136,18 @@ export function useChat(options: UseChatOptions) {
 
     abortControllerRef.current = new AbortController();
 
-    // Aggiungi messaggio utente
+
+    // Append context if theme selected
+    let messageContent = content;
+    if (selectedThemeId) {
+      messageContent += `\n\n[System Context] The user has selected the template/theme: "${selectedThemeId}". Please check the installed templates database for this specific theme to use its styles and components if relevant to the request.`;
+    }
+
+    // Aggiungi messaggio utente (mostra contenuto originale in UI)
     const userMessage: ChatMessage = {
       id: Date.now(),
       role: 'user',
-      content,
+      content: content,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -272,7 +283,7 @@ export function useChat(options: UseChatOptions) {
     try {
       await chatService.sendMessage(
         projectPath,
-        content,
+        messageContent, // Send enriched content to LLM
         {
           sessionId: currentSessionId,
           agentId: selectedAgentId,
@@ -548,6 +559,7 @@ export function useChat(options: UseChatOptions) {
     pausedRunId,
     pausedAgentName,
     pausedTool,
+    selectedThemeId,
 
     // Azioni
     sendMessage,
@@ -557,6 +569,7 @@ export function useChat(options: UseChatOptions) {
     cancelStream,
     setSelectedAgentId,
     continueRun,
+    setSelectedThemeId,
 
     // Helper
     hasMessages,

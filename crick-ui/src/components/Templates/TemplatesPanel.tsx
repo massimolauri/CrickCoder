@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Upload, X, LayoutTemplate, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { useChat } from '../../hooks/useChat';
+import { templateService } from '../../services/templateService';
 
 interface Template {
     id: string;
@@ -26,6 +28,7 @@ interface TemplatesPanelProps {
 }
 
 export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelProps) {
+    const { llmSettings } = useChat({ projectPath }); // Get global settings
     const [templates, setTemplates] = useState<Template[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -41,9 +44,10 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
     const fetchTemplates = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/templates');
-            const data = await res.json();
-            setTemplates(data.templates || []);
+            const res = await templateService.listTemplates(projectPath);
+            if (res.success) {
+                setTemplates(res.data.templates || []);
+            }
         } catch (err) {
             console.error("Failed to fetch templates", err);
         } finally {
@@ -90,8 +94,18 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
         setLogs([]);
         setProgress(0);
 
+        // We use the service, but since the service returns void/stream handling needs to be adapted
+        // The service uses fetch. To keep the LIVE LOGS feature working, we need essentially what was here, 
+        // but with the extra FormData field. 
+        // So I will replicate the fetch logic here BUT adding 'llm_settings'. 
+        // Calling templateService.uploadTemplate would hide the stream reading unless I refactor the service to yield events.
+        // For least disturbance, I'll update the raw fetch here to include llm_settings.
+
         const formData = new FormData();
         formData.append("file", file);
+        if (llmSettings) {
+            formData.append("llm_settings", JSON.stringify(llmSettings));
+        }
 
         // SSE connection via fetch is tricky, but we can use basic fetch and read the stream
         try {

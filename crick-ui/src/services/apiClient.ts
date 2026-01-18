@@ -164,7 +164,7 @@ export class ApiClient {
 }
 
 /** Istanza globale del client API */
-const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = 'http://localhost:8000/api';
 export const apiClient = new ApiClient({
   baseUrl: API_BASE_URL,
   timeout: 60000, // Timeout lungo per stream SSE
@@ -182,7 +182,7 @@ export function buildChatBody(
   message: string,
   projectPath: string,
   sessionId?: string | null,
-  agentId?: "ARCHITECT" | "CODER",
+  agentId?: "ARCHITECT" | "CODER" | "PLANNER",
   llmSettings?: LLMSettings,
   autoApproval: boolean = true
 ) {

@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # --- Local Imports ---
-from src.models import ChatRequest, ContinueRequest
+from src.models import ChatRequest, ContinueRequest, LLMSettings
 from src.core.manager import VibingManager
 from src.core.streamer import event_stream_generator
 from src.core.monitor import codebase_registry
@@ -114,16 +114,24 @@ async def chat_endpoint(req: ChatRequest):
 @app.post("/api/templates/upload")
 async def upload_template_zip(
     file: UploadFile = File(...),
-    project_path: Optional[str] = Query(None) # Query param, optional and ignored
+    project_path: Optional[str] = Query(None), # Query param, optional and ignored
+    llm_settings: str = Form(...) # JSON string of LLMSettings
 ):
     """
     Uploads a ZIP file containing a graphic template.
     1. Extracts ZIP
     2. Identifies Manifest (Template ID)
     3. Extracts Preview Image (theme_screen.png) to GLOBAL public folder
-    4. Indexes content into GLOBAL LanceDB
+    4. Indexes content into GLOBAL LanceDB using provided LLM Settings
     """
     try:
+        # Parse LLM Settings
+        try:
+            settings_dict = json.loads(llm_settings)
+            parsed_settings = LLMSettings(**settings_dict)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid LLM Settings: {e}")
+
         # Save ZIP temporarily
         temp_dir = os.path.join(SERVER_ROOT, ".temp_upload")
         os.makedirs(temp_dir, exist_ok=True)
@@ -134,7 +142,8 @@ async def upload_template_zip(
 
         async def progress_generator():
             # USE SERVER_ROOT for Global Storage
-            indexer = TemplateIndexer(SERVER_ROOT)
+            # Pass parsed settings to Indexer for AI Analysis
+            indexer = TemplateIndexer(SERVER_ROOT, llm_settings=parsed_settings)
             
             try:
                 for event in indexer.process_template_zip(temp_zip_path):
@@ -312,7 +321,7 @@ def health_check():
 @app.get("/api/agents")
 def get_agents():
     """Returns the list of available agents."""
-    return {"agents": ["ARCHITECT", "CODER"]}
+    return {"agents": ["ARCHITECT", "PLANNER", "CODER"]}
 
 if __name__ == "__main__":
     # Reload=True allows hot-reloading during development

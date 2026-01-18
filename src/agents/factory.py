@@ -5,6 +5,7 @@ from src.models import LLMSettings
 # Importiamo le funzioni dai nuovi file specifici
 from src.agents.architect import build_architect
 from src.agents.coder import build_coder
+from src.agents.planner import build_planner
 
 def build_agents(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None) -> Dict[str, Agent]:
     """
@@ -23,8 +24,12 @@ def build_agents(project_root: str, session_id: str, auto_approval: bool = False
     # 2. Costruisci Coder
     coder = build_coder(project_root, session_id, auto_approval, llm_settings)
 
-    # 3. Restituisci la mappa
+    # 3. Costruisci Planner
+    planner = build_planner(project_root, session_id, auto_approval, llm_settings)
+
+    # 4. Restituisci la mappa
     return {
         "ARCHITECT": architect,
-        "CODER": coder
+        "CODER": coder,
+        "PLANNER": planner
     }

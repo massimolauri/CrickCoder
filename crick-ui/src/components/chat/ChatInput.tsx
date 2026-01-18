@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { ChevronRight, Square, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, Square, Play, Palette } from 'lucide-react';
+import { templateService } from '@/services/templateService';
+import type { Template } from '@/types/api.types';
 
 interface ChatInputProps {
   onSubmit: (value: string) => void;
@@ -7,11 +9,25 @@ interface ChatInputProps {
   streaming: boolean;
   disabled: boolean;
   placeholder: string;
+  selectedThemeId: string | null;
+  onThemeSelect: (themeId: string | null) => void;
 }
 
 const ChatInput = React.memo(function ChatInput(props: ChatInputProps) {
 
   const [localValue, setLocalValue] = useState('');
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  useEffect(() => {
+    // Load templates on mount
+    templateService.listTemplates((window as any).electron?.projectPath || "")
+      .then(result => {
+        if (result.success) {
+          setTemplates(result.data.templates);
+        }
+      });
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -39,7 +55,46 @@ const ChatInput = React.memo(function ChatInput(props: ChatInputProps) {
 
   return (
     <div className={`max-w-4xl mx-auto backdrop-blur-xl bg-crick-surface border border-gray-200 dark:border-[#3e3e42] shadow-2xl rounded-2xl p-2 flex items-center gap-3 transition-all focus-within:ring-1 focus-within:ring-crick-accent/30`}>
-      <div className="pl-3 text-crick-text-secondary">
+      <div className="relative">
+        <button
+          onClick={() => setShowTemplates(!showTemplates)}
+          className={`p-1.5 rounded-md transition-colors ${props.selectedThemeId
+            ? 'text-purple-500 bg-purple-500/10'
+            : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+          title="Select Theme Context"
+        >
+          <Palette size={18} />
+        </button>
+
+        {showTemplates && (
+          <div className="absolute bottom-full mb-2 left-0 w-64 bg-white dark:bg-[#252526] border border-gray-200 dark:border-[#3e3e42] rounded-xl shadow-xl overflow-hidden z-50">
+            <div className="p-2 border-b border-gray-100 dark:border-[#3e3e42]">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 pb-1">SELECT THEME CONTEXT</p>
+            </div>
+            <div className="max-h-60 overflow-y-auto py-1">
+              <button
+                onClick={() => { props.onThemeSelect(null); setShowTemplates(false); }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-[#2d2d2d] flex items-center justify-between group ${!props.selectedThemeId ? 'text-purple-500' : 'text-gray-700 dark:text-gray-300'}`}
+              >
+                <span>No Theme</span>
+                {!props.selectedThemeId && <div className="h-2 w-2 rounded-full bg-purple-500" />}
+              </button>
+              {templates.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { props.onThemeSelect(t.id); setShowTemplates(false); }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-[#2d2d2d] flex items-center justify-between group ${props.selectedThemeId === t.id ? 'text-purple-500' : 'text-gray-700 dark:text-gray-300'}`}
+                >
+                  <span className="truncate">{t.name}</span>
+                  {props.selectedThemeId === t.id && <div className="h-2 w-2 rounded-full bg-purple-500" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="text-crick-text-secondary">
         <ChevronRight size={18} />
       </div>
       <input

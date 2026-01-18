@@ -4,7 +4,7 @@ import type { ChatEvent, EventCallback, LLMSettings } from '@/types/api.types';
 /** Opzioni per invio messaggio */
 export interface SendMessageOptions {
   sessionId?: string | null;
-  agentId?: "ARCHITECT" | "CODER";
+  agentId?: "ARCHITECT" | "CODER" | "PLANNER";
   llmSettings?: LLMSettings;
   autoApproval?: boolean;
   onEvent?: EventCallback;
