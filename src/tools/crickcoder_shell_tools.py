@@ -108,7 +108,7 @@ class CrickCoderShellTools(Toolkit):
 
             return self._format_output(stdout, stderr, exit_code)
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
             logger.warning(f"⏳ TIMEOUT ({actual_timeout}s): Killing process tree...")
             
             # 1. Kill the entire process tree
@@ -116,14 +116,21 @@ class CrickCoderShellTools(Toolkit):
                 self._kill_process_tree(process.pid)
             
             # 2. Try to recover partial output to understand where it got stuck
-            partial_out, partial_err = "", ""
-            if process:
-                try:
-                    # Best-effort attempt to read buffer
-                    if process.stdout: partial_out = process.stdout.read()
-                    if process.stderr: partial_err = process.stderr.read()
-                except:
-                    pass
+            # The exception object often contains the output captured so far
+            partial_out = e.stdout if e.stdout else ""
+            partial_err = e.stderr if e.stderr else ""
+
+            # Fallback: if exception didn't capture it (rare with communicate), try reading manually
+            if not partial_out and process and process.stdout:
+                try: 
+                    # Set non-blocking or just try read
+                    partial_out = process.stdout.read() 
+                except Exception: pass
+            
+            if not partial_err and process and process.stderr:
+                try: 
+                    partial_err = process.stderr.read() 
+                except Exception: pass
 
             return (
                 f"❌ TIMEOUT ERROR\n"

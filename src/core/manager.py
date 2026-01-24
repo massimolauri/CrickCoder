@@ -48,6 +48,25 @@ class VibingManager:
 
         logger.info(f"🚀 Routing request to: {agent_id} | Session: {self.session_id}")
 
+        # --- Context Injection: Read Task List from Brain ---
+        # This ensures the agent is aware of the current project status even in new sessions.
+        try:
+             brain_task_path = os.path.join(self.project_root, ".crick", "sessions", self.session_id, "brain", "task.md")
+             if os.path.exists(brain_task_path):
+                 with open(brain_task_path, "r", encoding="utf-8") as f:
+                     task_content = f.read()
+                 
+                 # Prepend context to the message
+                 # We use a clear separator so the agent knows this is context, not user speech.
+                 context_header = (
+                     "\n\n--- 🧠 SYSTEM CONTEXT: CURRENT PROJECT TASKS ---\n"
+                     f"{task_content}\n"
+                     "--- END CONTEXT ---\n\n"
+                 )
+                 message = context_header + message
+        except Exception as e:
+            logger.warning(f"Failed to inject task context: {e}")
+
         # 2. Proxy Execution Stream
         # Directly call the agent's arun method
         async for event in active_agent.arun(

@@ -32,7 +32,7 @@ class CrickCoderFileTools(Toolkit):
 
         tools: List[Any] = []
         
-        # Lista delle funzioni che richiedono approvazione
+        # List of functions that require confirmation
         tools_needing_confirmation: List[str] = []
 
         self.max_file_length = max_file_length
@@ -40,7 +40,7 @@ class CrickCoderFileTools(Toolkit):
         self.line_separator = line_separator
         self.expose_base_directory = expose_base_directory
 
-        # --- REGISTRAZIONE TOOLS ---
+        # --- REGISTER TOOLS ---
         
         if all or enable_save_file:
             tools.append(self.save_file)
@@ -51,15 +51,15 @@ class CrickCoderFileTools(Toolkit):
 
         if all or enable_read_file:
             tools.append(self.read_file)
-            # Read è safe, non serve conferma solitamente
+            # Read is safe, usually does not need confirmation
 
         if all or enable_list_files:
             tools.append(self.list_files)
-            # List è safe
+            # List is safe
 
         if all or enable_search_files:
             tools.append(self.search_files)
-            # Search è safe
+            # Search is safe
 
         if all or enable_delete_file:
             tools.append(self.delete_file)
@@ -72,8 +72,8 @@ class CrickCoderFileTools(Toolkit):
             tools.append(self.replace_file_chunk)
             if enable_confirmation: tools_needing_confirmation.append("replace_file_chunk")
 
-        # --- INIZIALIZZAZIONE PARENT ---
-        # Passiamo la lista dinamica a Agno
+        # --- PARENT INITIALIZATION ---
+        # Pass the dynamic list to Agno
         super().__init__(
             name="file_tools", 
             tools=tools, 
@@ -177,6 +177,7 @@ class CrickCoderFileTools(Toolkit):
 
     # ... (read_file, list_files, search_files, check_escape rimangono uguali) ...
     def read_file(self, file_name: str, encoding: str = "utf-8") -> str:
+        """Reads the contents of the file `file_name`."""
         try:
             safe, file_path = self.check_escape(file_name)
             if not (safe): return "Error reading file"
@@ -187,6 +188,7 @@ class CrickCoderFileTools(Toolkit):
             return f"Error reading file: {e}"
 
     def list_files(self, **kwargs) -> str:
+        """Lists files in the base directory or a specific subdirectory."""
         directory = kwargs.get("directory", ".")
         try:
             safe, d = self.check_escape(directory)
@@ -197,6 +199,7 @@ class CrickCoderFileTools(Toolkit):
             return "{}"
 
     def search_files(self, pattern: str) -> str:
+        """Searches for files matching the glob pattern."""
         try:
             matching_files = list(self.base_dir.glob(pattern))
             file_paths = [str(p.relative_to(self.base_dir)) for p in matching_files]
@@ -205,11 +208,14 @@ class CrickCoderFileTools(Toolkit):
             return f"Error: {e}"
             
     def read_file_chunk(self, file_name: str, start_line: int, end_line: int, encoding: str = "utf-8") -> str:
+        """Reads a specific chunk of lines from a file."""
         try:
             safe, file_path = self.check_escape(file_name)
             if not safe: return "Error"
             contents = file_path.read_text(encoding=encoding)
             lines = contents.split(self.line_separator)
+            # Adjust for 1-based indexing if necessary, but assuming 0-based or matching usage
+            # Usually users expect 1-based, but code uses start_line : end_line + 1
             return self.line_separator.join(lines[start_line : end_line + 1])
         except Exception as e:
             return f"Error: {e}"

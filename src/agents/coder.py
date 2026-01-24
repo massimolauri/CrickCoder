@@ -1,60 +1,54 @@
 import platform
-from pathlib import Path
 from typing import Optional
 from agno.agent import Agent
 from src.core.factory_models import build_model_for_runtime
-from src.tools.crickcoder_file_tools import CrickCoderFileTools
-from src.tools.crickcoder_shell_tools import CrickCoderShellTools
-from src.tools.crickcoder_template_tools import CrickCoderTemplateTools
 from src.core.knowledge import get_shared_knowledge
 from src.core.storage import get_agent_storage
 from src.prompts.loader import load_prompt
 from src.models import LLMSettings
 
+# Import Tools
+from src.tools.crick_brain_tools import CrickBrainTools
+from src.tools.crickcoder_file_tools import CrickCoderFileTools
+from src.tools.crickcoder_shell_tools import CrickCoderShellTools
+from src.tools.crickcoder_template_tools import CrickCoderTemplateTools
+from pathlib import Path
+
 def build_coder(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None):
     """
-    Costruisce il Coder configurando i tools e la modalità di sicurezza nativa.
-
-    Args:
-        project_root: Path assoluto del progetto.
-        session_id: ID sessione.
-        auto_approval:
-            - True (God Mode): Esegue comandi immediatamente.
-            - False (Safe Mode): Attiva 'requires_confirmation' nei Tool e mette in pausa Agno.
-        llm_settings: Configurazione LLM opzionale.
+    Builds the Coder Agent (Single Agent with Tools).
     """
     
-    # 1. Context OS (Imperativo)
+    # 1. Context OS (Imperative)
     current_os = platform.system()
     os_release = platform.release()
-    os_context = f"SYSTEM OS: {current_os} ({os_release}). Use native shell syntax for this OS."
-
+    os_context = f"SYSTEM OS: {current_os} ({os_release})."
 
     storage = get_agent_storage(project_root=project_root) 
-    # 2. Configurazione Modalità (Logica Nativa Agno)
-    # Calcoliamo se i tool devono richiedere conferma
+    
+    # 2. Safety Configuration
     enable_tool_confirmation = not auto_approval
 
-    # 3. Setup Tools con Path Assoluti e Configurazione Sicurezza
-    project_path = Path(project_root)
-    
-    # FILE TOOLS: Attiviamo la conferma se siamo in Safe Mode
-    file_tool = CrickCoderFileTools(
-        base_dir=project_path,
-        enable_confirmation=enable_tool_confirmation 
-    )
-
-    # SHELL TOOLS: Attiviamo la conferma se siamo in Safe Mode
-    shell_tool = CrickCoderShellTools(
-        base_dir=project_path, 
-        timeout_seconds=120,
-        enable_confirmation=enable_tool_confirmation 
-    )
-
-    # Configurazione Modello LLM
     if not llm_settings:
-        raise ValueError("llm_settings è obbligatorio per costruire l'agente Coder")
+        raise ValueError("llm_settings is required to build the Coder agent")
 
+    # 3. Instantiate Tools
+    brain_tool = CrickBrainTools(project_root=project_root, llm_settings=llm_settings, session_id=session_id)
+    
+    file_tools = CrickCoderFileTools(
+        base_dir=Path(project_root),
+        enable_confirmation=enable_tool_confirmation
+    )
+    
+    shell_tools = CrickCoderShellTools(
+        base_dir=Path(project_root),
+        timeout_seconds=120,
+        enable_confirmation=enable_tool_confirmation
+    )
+    
+    template_tools = CrickCoderTemplateTools(project_root=project_root)
+
+    # 4. Build Model
     model = build_model_for_runtime(
         provider=llm_settings.provider,
         model_id=llm_settings.model_id,
@@ -62,27 +56,31 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         api_key=llm_settings.api_key
     )
 
+    # 5. Create Agent
     return Agent(
         name="Coder",
         role="Senior Developer",
         model=model,
+        # Shared Knowledge
         knowledge=get_shared_knowledge(project_root),
-        search_knowledge=True,
-        db=storage,
-        session_id=session_id,
-        user_id="crickdeveloper",
-        enable_session_summaries=True,
-        tools=[
-            file_tool,
-            shell_tool,
-            CrickCoderTemplateTools(project_root=project_root)
-        ],
+        search_knowledge=True, 
+        
+        # Tools List
+        tools=[brain_tool, file_tools, shell_tools, template_tools],
+        
+        # Instructions
         instructions=[
             load_prompt("coder.md"),
-            os_context
+            os_context,
+            "Follow the Strict Workflow: Orientation -> Planning -> Execution -> Reporting."
         ],
-        markdown=True,
+        
+        # Storage & Session
+        db=storage,
+        session_id=session_id,
+        add_history_to_context=True, 
+        num_history_runs=10,
+        
         debug_mode=True,
-        add_history_to_context=True,
-        num_history_runs=5
+        markdown=True
     )

@@ -32,90 +32,125 @@ class CrickCoderTemplateTools(Toolkit):
     def install_template_assets(self, template_id: str, asset_path: str, target_path: str) -> str:
         """
         Copies static assets (folders or files) from the Template Archive to the current project.
-        Use this to install CSS, JS, Images, or Fonts from a theme.
+        Automatically handles nested wrapper folders common in ZIP extracts.
 
         Args:
             template_id: The ID of the template (e.g., "tema607").
             asset_path: The relative path inside the template assets (e.g., "css", "js/main.js", "." for root).
             target_path: The destination path in your project (e.g., "public/css", "src/assets").
-
+            
         Returns:
             Success or error message.
         """
         import shutil
 
-        # Source: <SERVER_ROOT>/public/templates/<id>/assets/<asset_path>
+        # Source Base: <SERVER_ROOT>/public/templates/<id>/assets
         source_base = os.path.join(self.server_root, "public", "templates", template_id, "assets")
         
-        # Handle root access
+        # Validation: check if template/assets exist
+        if not os.path.exists(source_base):
+             # Try identifying if template exists at all
+             template_root = os.path.join(self.server_root, "public", "templates", template_id)
+             if not os.path.exists(template_root):
+                 return f"Error: Template '{template_id}' not found."
+             # If template exists but no assets folder, maybe it's flat? 
+             # For now, strictly require 'assets' folder to match architecture.
+             return f"Error: No 'assets' folder found in template '{template_id}'."
+
+        # SMART UNWRAP: Remove wrapper directories (e.g. "assets/MyThemeV1/...")
+        # Often zip files extract into a single subdirectory. We want to skip that.
+        # Heuristic: If there is exactly one item, it's a directory, and NOT a standard asset name.
+        common_asset_names = {"css", "js", "img", "images", "fonts", "static", "media", "lib", "vendor", "assets"}
+        
+        # Limit recursion to avoid infinite loops (though unlikely with file system)
+        unwrap_depth = 0
+        while unwrap_depth < 3:
+            try:
+                items = os.listdir(source_base)
+                if len(items) == 1:
+                    single_item = items[0]
+                    single_full = os.path.join(source_base, single_item)
+                    
+                    if os.path.isdir(single_full) and single_item.lower() not in common_asset_names:
+                        # It looks like a wrapper (e.g. "material-dashboard-master") -> Unwrap it
+                        source_base = single_full
+                        unwrap_depth += 1
+                        continue
+            except Exception:
+                pass
+            break
+        
+        # Handle root access vs specific path
         if asset_path == "." or asset_path == "/" or not asset_path:
              full_source = source_base
         else:
              full_source = os.path.join(source_base, asset_path)
 
-        # Target: Relative to CWD (Project Root)
-        full_target = os.path.abspath(target_path)
+        # Target: Relative to Project Root (not CWD)
+        if os.path.isabs(target_path):
+            full_target = target_path
+        else:
+            full_target = os.path.join(self.project_root, target_path)
 
-        # Smart Path Resolution
+        # Smart Path Resolution (Standard Search)
+        # If the specific asset requested (e.g. "css") isn't at the calculated root, search for it.
         if not os.path.exists(full_source):
-            # Check if it's nested in a subfolder (common in ZIPs like 'theme/assets/css')
-            root_contents = os.listdir(source_base)
+            # Check recursively in subfolders
             found_smart = False
-            for item in root_contents:
-                potential_path = os.path.join(source_base, item, asset_path)
-                if os.path.isdir(os.path.join(source_base, item)) and os.path.exists(potential_path):
-                    full_source = potential_path
-                    found_smart = True
-                    break
+            for root, dirs, files in os.walk(source_base):
+                # Check dirs
+                if os.path.basename(asset_path) in dirs:
+                     potential = os.path.join(root, os.path.basename(asset_path))
+                     # Verify it matches the suffix requested to avoid partial matches if complex
+                     # simplistic check:
+                     full_source = potential
+                     found_smart = True
+                     break
+                # Check files
+                if os.path.basename(asset_path) in files:
+                     potential = os.path.join(root, os.path.basename(asset_path))
+                     full_source = potential
+                     found_smart = True
+                     break
             
             if not found_smart:
-                # Generate a helpful directory listing for the agent
+                # Generate a helpful directory listing
                 try:
                     available = []
-                    for root, dirs, _ in os.walk(source_base):
+                    for root, dirs, files in os.walk(source_base):
                         for d in dirs:
                             rel = os.path.relpath(os.path.join(root, d), source_base)
-                            if len(available) < 10: available.append(rel)
+                            if len(available) < 15: available.append(f"{rel}/")
+                        for f in files:
+                            rel = os.path.relpath(os.path.join(root, f), source_base)
+                            if len(available) < 15: available.append(rel)
                     listing = ", ".join(available)
                 except:
                     listing = "Error listing files"
                     
-                return f"Error: Asset '{asset_path}' not found in {template_id}. Available dirs: [{listing}...]"
+                return f"Error: Asset '{asset_path}' not found in {template_id}. Available in root: [{listing}...]"
 
         try:
-            # Determine effective target directory
-            # If copying a DIRECTORY, full_target IS the new dir.
-            # If copying a FILE, full_target might be the new file OR the dir to put it in.
-            
-            # Logic: If source is FILE, and target looks like a DIR (no extension) or user provided a dir path, 
-            # we should append the filename.
+            # Determine effective target
             effective_target = full_target
             
             if not os.path.isdir(full_source): # Source is FILE
-                # Heuristic: If target has no extension and doesn't exist, assume it's a DIR
+                # If target looks like a DIR (no ext) or is existing DIR
                 _, ext = os.path.splitext(full_target)
-                if not ext and not os.path.exists(full_target):
-                    # Make it a directory
+                if (not ext and not os.path.exists(full_target)) or os.path.isdir(full_target):
                     os.makedirs(full_target, exist_ok=True)
-                    # Append source filename
-                    effective_target = os.path.join(full_target, os.path.basename(full_source))
-                elif os.path.isdir(full_target):
-                    # Target is existing directory
                     effective_target = os.path.join(full_target, os.path.basename(full_source))
                 else:
-                    # Target is a file path (e.g. public/css/custom.css)
-                    # Ensure parent exists
                     os.makedirs(os.path.dirname(full_target), exist_ok=True)
-
             else: # Source is DIR
-                 # Ensure parent of the new dir exists
                  os.makedirs(os.path.dirname(full_target), exist_ok=True)
 
             message = ""
             if os.path.isdir(full_source):
                 # Copy Directory
+                # Note: copytree with dirs_exist_ok=True MERGES content.
                 shutil.copytree(full_source, full_target, dirs_exist_ok=True)
-                message = f"Directory '{asset_path}' installed to '{target_path}' (from {full_source})."
+                message = f"Directory '{asset_path}' (resolved to {os.path.basename(full_source)}) installed to '{target_path}'."
             else:
                 # Copy File
                 shutil.copy2(full_source, effective_target)
@@ -126,7 +161,7 @@ class CrickCoderTemplateTools(Toolkit):
         except Exception as e:
             return f"Error installing assets: {str(e)}"
 
-    def search_templates(self, query: str, template_id: Optional[str] = None, limit: int = 5) -> str:
+    def search_templates(self, query: str, template_id: Optional[str] = None, limit: int = 5, verbose: bool = False) -> str:
         """
         Searches for code snippets or logic within the installed templates.
         
@@ -134,6 +169,7 @@ class CrickCoderTemplateTools(Toolkit):
             query: The natural language search query (e.g., "login page component", "sidebar styling").
             template_id: Optional. If provided, searches only within that specific template.
             limit: Number of results to return.
+            verbose: If True, returns full code snippets. If False (default), returns compact summaries.
             
         Returns:
             A string containing relevant code snippets and their file paths.
@@ -191,6 +227,8 @@ class CrickCoderTemplateTools(Toolkit):
             output = f"## Search Results for '{query}'"
             if template_id:
                 output += f" in template '{template_id}'"
+            if not verbose:
+                output += " (Compact Mode - Use `verbose=True` for full code)"
             output += "\n\n"
 
             for i, item in enumerate(all_results[:limit]): 
@@ -211,19 +249,24 @@ class CrickCoderTemplateTools(Toolkit):
                 output += f"**Template**: {tmpl}\n"
                 output += f"**File**: {path}\n"
                 output += f"**Selector**: `{selector}`\n"
-                output += f"**Description**: {content}\n\n"
                 
-                if code_snippet:
-                    output += "**Code Snippet**:\n"
-                    output += "```html\n"
-                    output += code_snippet + "\n"
-                    output += "```\n"
+                if verbose:
+                    output += f"**Description**: {content}\n\n"
+                    if code_snippet:
+                        output += "**Code Snippet**:\n"
+                        output += "```html\n"
+                        output += code_snippet + "\n"
+                        output += "```\n"
+                    else:
+                        # Fallback for old/text chunks
+                        output += "**Content**:\n"
+                        output += "```" + (meta.get("language", "") or "") + "\n"
+                        output += content + "\n"
+                        output += "```\n"
                 else:
-                    # Fallback for old/text chunks
-                    output += "**Content**:\n"
-                    output += "```" + (meta.get("language", "") or "") + "\n"
-                    output += content + "\n"
-                    output += "```\n"
+                    # Compact: Truncate content/description
+                    short_desc = (content[:300] + '...') if len(content) > 300 else content
+                    output += f"**Snippet Preview**: {short_desc}\n"
                 
                 output += "\n---\n\n"
 

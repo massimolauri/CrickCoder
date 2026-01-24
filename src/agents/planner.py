@@ -8,6 +8,8 @@ from src.prompts.loader import load_prompt
 from src.models import LLMSettings
 from src.tools.crickcoder_template_tools import CrickCoderTemplateTools
 
+from src.tools.crick_brain_tools import CrickBrainTools
+
 def build_planner(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None):
     """
     Costruisce l'agente Planner.
@@ -48,5 +50,8 @@ def build_planner(project_root: str, session_id: str, auto_approval: bool = Fals
         debug_mode=True,
         add_history_to_context=True,
         num_history_runs=5,
-        tools=[CrickCoderTemplateTools(project_root=project_root)]
+        tools=[
+            CrickCoderTemplateTools(project_root=project_root),
+            CrickBrainTools(project_root=project_root, llm_settings=llm_settings, session_id=session_id)
+        ]
     )

@@ -11,6 +11,7 @@ interface ChatInputProps {
   placeholder: string;
   selectedThemeId: string | null;
   onThemeSelect: (themeId: string | null) => void;
+  projectPath: string;
 }
 
 const ChatInput = React.memo(function ChatInput(props: ChatInputProps) {
@@ -20,14 +21,15 @@ const ChatInput = React.memo(function ChatInput(props: ChatInputProps) {
   const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
-    // Load templates on mount
-    templateService.listTemplates((window as any).electron?.projectPath || "")
-      .then(result => {
-        if (result.success) {
-          setTemplates(result.data.templates);
-        }
-      });
-  }, []);
+    if (showTemplates) {
+      templateService.listTemplates(props.projectPath)
+        .then(result => {
+          if (result.success) {
+            setTemplates(result.data.templates);
+          }
+        });
+    }
+  }, [showTemplates, props.projectPath]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

@@ -13,6 +13,7 @@ import { projectStorage, llmSettingsStorage, type LLMSettings } from '@/utils/st
 import SessionList from '@/components/SessionList/SessionList';
 import HealthIndicator from '@/components/HealthStatus/HealthIndicator';
 import TemplatesPanel from '@/components/Templates/TemplatesPanel';
+import TodoCard from '@/components/TodoCard';
 // Import componenti chat
 import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/chat/ChatInput';
@@ -446,6 +447,7 @@ export default function CrickInterface() {
             placeholder={placeholder}
             selectedThemeId={chat.selectedThemeId}
             onThemeSelect={chat.setSelectedThemeId}
+            projectPath={projectPath}
           />
 
           {/* Controls below chat */}
@@ -499,6 +501,9 @@ export default function CrickInterface() {
           </div>
         </div>
       </div>
+
+      {/* Floating Todo Card */}
+      <TodoCard projectPath={projectPath} sessionId={chat.currentSessionId} />
     </div>
   );
 }

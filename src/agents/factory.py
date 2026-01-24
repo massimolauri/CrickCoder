@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from agno.agent import Agent
 from src.models import LLMSettings
 
@@ -7,7 +7,7 @@ from src.agents.architect import build_architect
 from src.agents.coder import build_coder
 from src.agents.planner import build_planner
 
-def build_agents(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None) -> Dict[str, Agent]:
+def build_agents(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None) -> Dict[str, Any]:
     """
     Factory principale che assembla il team.
 

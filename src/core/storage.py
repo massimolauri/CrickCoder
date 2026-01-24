@@ -36,15 +36,90 @@ def get_agent_db_path(project_root: str = None) -> str:
         storage_dir = os.path.join(crick_dir, "sessions")
 
     os.makedirs(storage_dir, exist_ok=True)
-    return os.path.join(storage_dir, "agent_memory.db")
+    db_path = os.path.join(storage_dir, "agent_memory.db")
+    
+    # Initialize DB (Sync for schema creation safety)
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Table for Document Versioning
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS doc_versions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doc_type TEXT NOT NULL,
+                content TEXT,
+                instruction TEXT,
+                version INTEGER,
+                timestamp REAL
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DB Initialization Error: {e}")
 
-def get_agent_storage( project_root: str = None):
+    return db_path
+
+class AgentStorage(AsyncSqliteDb):
+    """
+    Extended Storage class to handle Document Versioning.
+    """
+    def __init__(self, db_file: str, **kwargs):
+        self.db_file_path = db_file
+        super().__init__(db_url=f"sqlite+aiosqlite:///{db_file}", **kwargs)
+
+    async def save_doc_version(self, doc_type: str, content: str, instruction: str):
+        """
+        Saves a new version of a document.
+        """
+        try:
+             # Use the explicitly stored path
+             path = self.db_file_path
+             
+             with sqlite3.connect(path) as conn:
+                 cursor = conn.cursor()
+                 
+                 # Get max version
+                 cursor.execute("SELECT MAX(version) FROM doc_versions WHERE doc_type = ?", (doc_type,))
+                 row = cursor.fetchone()
+                 current_version = row[0] if row and row[0] is not None else 0
+                 new_version = current_version + 1
+                 
+                 cursor.execute("""
+                    INSERT INTO doc_versions (doc_type, content, instruction, version, timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                 """, (doc_type, content, instruction, new_version, time.time()))
+                 conn.commit()
+        except Exception as e:
+             print(f"Error saving doc version: {e}")
+
+def get_agent_storage(project_root: str = None):
     """
     Restituisce l'oggetto Storage configurato su SQLite.
     I dati persistono nel file 'agent_memory.db' nella directory appropriata.
     """
     db_file = get_agent_db_path(project_root)
-    return AsyncSqliteDb(
+    
+    # Init Schema
+    try:
+        with sqlite3.connect(db_file) as conn:
+             cursor = conn.cursor()
+             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS doc_versions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    doc_type TEXT NOT NULL,
+                    content TEXT,
+                    instruction TEXT,
+                    version INTEGER,
+                    timestamp REAL
+                )
+             """)
+             conn.commit()
+    except: pass
+
+    # Return our extended class
+    return AgentStorage(
         db_file=db_file,
     )
 

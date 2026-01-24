@@ -61,6 +61,65 @@ os.makedirs(os.path.join(SERVER_ROOT, "public", "templates"), exist_ok=True)
 # Mount Static Files for Templates
 app.mount("/public", StaticFiles(directory=os.path.join(SERVER_ROOT, "public")), name="public")
 
+@app.get("/api/project/brain/{filename}")
+async def get_brain_file(filename: str, project_path: Optional[str] = Query(None), session_id: Optional[str] = Query(None)):
+    """
+    Returns the content of a file from the .crick/sessions/<session_id>/brain directory.
+    """
+    try:
+        if not project_path:
+             return {"content": "", "error": "Missing project_path query parameter"}
+        
+        if not session_id:
+             return {"content": "", "error": "Missing session_id query parameter"}
+
+        # Normalizza e verifica il path del progetto
+        project_root = normalize_path(project_path=project_path)
+        if not os.path.exists(project_root):
+            return {"content": "", "error": "Project path not found"}
+
+        brain_dir = os.path.join(project_root, ".crick", "sessions", session_id, "brain")
+        file_path = os.path.join(brain_dir, filename)
+        
+        if not os.path.exists(file_path):
+            # Proviamo a vedere se è un file nuovo e magari ancora non esiste
+            return {"content": "", "error": "File not found"}
+            
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
+
+    except Exception as e:
+        return {"content": "", "error": str(e)}
+
+@app.delete("/api/project/brain/task.md")
+async def clear_brain_task_file(
+    project_path: Optional[str] = Query(None),
+    session_id: Optional[str] = Query(None)
+):
+    """
+    Clears the task.md file for the specified session.
+    """
+    try:
+        if not project_path or not session_id:
+             raise HTTPException(status_code=400, detail="Missing project_path or session_id")
+        
+        project_root = normalize_path(project_path=project_path)
+        brain_dir = os.path.join(project_root, ".crick", "sessions", session_id, "brain")
+        file_path = os.path.join(brain_dir, "task.md")
+        
+        # Overwrite with empty default
+        empty_content = "# Project Tasks\n\nNo active tasks."
+        if os.path.exists(brain_dir): # Ensure dir exists
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(empty_content)
+        
+        return {"status": "success", "message": "Task list cleared."}
+
+    except Exception as e:
+        logger.error(f"Clear Task Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- ENDPOINTS ---
 
 @app.post("/api/chat")
