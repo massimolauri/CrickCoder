@@ -110,6 +110,7 @@ export interface LLMSettings {
   model_id: string;           // Es: "deepseek-chat", "gpt-4o", "claude-3-5-sonnet"
   api_key: string;            // Chiave API
   temperature?: number;       // Default 0.2
+  base_url?: string;          // Opzionale, per OpenAiLike/LocalAI
 }
 
 export const llmSettingsStorage = createStorage<LLMSettings>('crick_llm_settings', {

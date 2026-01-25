@@ -333,6 +333,21 @@ export default function CrickInterface() {
                   </select>
                 </div>
 
+                {/* Base URL (Visible only for OpenAiLike/LocalAI) */}
+                {llmSettings.provider === "OpenAiLike" && (
+                  <div className="space-y-2 animate-in slide-in-from-top-1 fade-in duration-300">
+                    <label className="text-sm text-slate-400">Base URL</label>
+                    <input
+                      type="text"
+                      value={llmSettings.base_url || ""}
+                      onChange={(e) => setLlmSettings({ ...llmSettings, base_url: e.target.value })}
+                      className="w-full bg-crick-surface border border-gray-200 dark:border-[#3e3e42] rounded-full px-4 py-2 text-sm text-crick-text-primary outline-none focus:border-crick-accent transition-colors font-mono"
+                      placeholder="e.g. http://localhost:1234/v1"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Required for local models (LM Studio, LocalAI, etc.)</p>
+                  </div>
+                )}
+
                 {/* Model ID */}
                 <div className="space-y-2">
                   <label className="text-sm text-slate-400">Model ID</label>
@@ -436,6 +451,29 @@ export default function CrickInterface() {
             )}
           </div>
         </div>
+
+        {/* Error Banner */}
+        {chat.error && (
+          <div className="mx-auto max-w-4xl px-4 animate-in slide-in-from-bottom-2 fade-in">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center justify-between gap-3 text-red-500 dark:text-red-400 mb-2 shadow-sm backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-500/20 p-2 rounded-full">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm">Error Occurred</span>
+                  <span className="text-xs font-mono opacity-90">{chat.error}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => chat.clearConversation()}
+                className="text-xs hover:underline opacity-70 hover:opacity-100"
+              >
+                Dismiss & Reset
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Chat input */}
         <div className="p-4 bg-crick-bg border-t border-gray-100 dark:border-[#3e3e42] z-20">

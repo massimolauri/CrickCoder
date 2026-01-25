@@ -75,18 +75,31 @@ async def get_brain_file(filename: str, project_path: Optional[str] = Query(None
 
         # Normalizza e verifica il path del progetto
         project_root = normalize_path(project_path=project_path)
+        
+        # DEBUG LOGGING
+        logger.info(f"Checking Brain File: {filename}")
+        logger.info(f"Raw Project Path: {project_path}")
+        logger.info(f"Normalized Root: {project_root}")
+        
         if not os.path.exists(project_root):
+            logger.error(f"Project root not found: {project_root}")
             return {"content": "", "error": "Project path not found"}
 
         brain_dir = os.path.join(project_root, ".crick", "sessions", session_id, "brain")
         file_path = os.path.join(brain_dir, filename)
         
+        logger.info(f"Calculated Brain Dir: {brain_dir}")
+        logger.info(f"Target File Path: {file_path}")
+        logger.info(f"File Exists: {os.path.exists(file_path)}")
+        
         if not os.path.exists(file_path):
             # Proviamo a vedere se è un file nuovo e magari ancora non esiste
+            logger.warning(f"File not found on disk: {file_path}")
             return {"content": "", "error": "File not found"}
             
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
+            logger.info(f"Read {len(content)} bytes from {filename}")
         return {"content": content}
 
     except Exception as e:

@@ -3,16 +3,22 @@ import lancedb
 from typing import Optional, List, Dict, Any
 from agno.tools import Toolkit
 from agno.vectordb.lancedb import LanceDb, SearchType
+from agno.agent import Agent
 from src.core.embedder import get_shared_embedder
+from src.models import LLMSettings
+from src.core.factory_models import build_model_for_runtime
+from src.prompts.loader import load_prompt
 
 class CrickCoderTemplateTools(Toolkit):
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: Optional[str] = None, llm_settings: Optional[LLMSettings] = None):
         super().__init__(name="template_tools")
         # If project_root is not provided, try to find it or use cwd
         if not project_root:
             self.project_root = os.getcwd()
         else:
             self.project_root = project_root
+            
+        self.llm_settings = llm_settings
             
         # FIX: Templates are Global (in SERVER_ROOT), not in User Project Root.
         # This file is in <SERVER_ROOT>/src/tools/crickcoder_template_tools.py
@@ -27,139 +33,60 @@ class CrickCoderTemplateTools(Toolkit):
 
         self.register(self.search_templates)
         self.register(self.list_installed_templates)
-        self.register(self.install_template_assets)
+        self.register(self.install_template)
 
-    def install_template_assets(self, template_id: str, asset_path: str, target_path: str) -> str:
+    def install_template(self, template_id: str, target_path: str = ".") -> str:
         """
-        Copies static assets (folders or files) from the Template Archive to the current project.
-        Automatically handles nested wrapper folders common in ZIP extracts.
-
+        Installs the selected template's assets into the current project.
+        
         Args:
             template_id: The ID of the template (e.g., "tema607").
-            asset_path: The relative path inside the template assets (e.g., "css", "js/main.js", "." for root).
-            target_path: The destination path in your project (e.g., "public/css", "src/assets").
+            target_path: Subdirectory to install into (e.g. "src/theme").
             
         Returns:
             Success or error message.
         """
         import shutil
-
+        
+        # 1. Resolve Source Path
         # Source Base: <SERVER_ROOT>/public/templates/<id>/assets
         source_base = os.path.join(self.server_root, "public", "templates", template_id, "assets")
         
-        # Validation: check if template/assets exist
+        # Check if template/assets exist
         if not os.path.exists(source_base):
-             # Try identifying if template exists at all
-             template_root = os.path.join(self.server_root, "public", "templates", template_id)
-             if not os.path.exists(template_root):
-                 return f"Error: Template '{template_id}' not found."
-             # If template exists but no assets folder, maybe it's flat? 
-             # For now, strictly require 'assets' folder to match architecture.
-             return f"Error: No 'assets' folder found in template '{template_id}'."
+             return f"Error: Template assets '{template_id}' not found (checked: {source_base})."
 
-        # SMART UNWRAP: Remove wrapper directories (e.g. "assets/MyThemeV1/...")
-        # Often zip files extract into a single subdirectory. We want to skip that.
-        # Heuristic: If there is exactly one item, it's a directory, and NOT a standard asset name.
-        common_asset_names = {"css", "js", "img", "images", "fonts", "static", "media", "lib", "vendor", "assets"}
+        full_source = source_base
+
+        # 2. Resolve Target Path (SECURE)
+        # Ensure target_path cannot escape self.project_root
         
-        # Limit recursion to avoid infinite loops (though unlikely with file system)
-        unwrap_depth = 0
-        while unwrap_depth < 3:
-            try:
-                items = os.listdir(source_base)
-                if len(items) == 1:
-                    single_item = items[0]
-                    single_full = os.path.join(source_base, single_item)
-                    
-                    if os.path.isdir(single_full) and single_item.lower() not in common_asset_names:
-                        # It looks like a wrapper (e.g. "material-dashboard-master") -> Unwrap it
-                        source_base = single_full
-                        unwrap_depth += 1
-                        continue
-            except Exception:
-                pass
-            break
-        
-        # Handle root access vs specific path
-        if asset_path == "." or asset_path == "/" or not asset_path:
-             full_source = source_base
-        else:
-             full_source = os.path.join(source_base, asset_path)
-
-        # Target: Relative to Project Root (not CWD)
-        if os.path.isabs(target_path):
-            full_target = target_path
-        else:
-            full_target = os.path.join(self.project_root, target_path)
-
-        # Smart Path Resolution (Standard Search)
-        # If the specific asset requested (e.g. "css") isn't at the calculated root, search for it.
-        if not os.path.exists(full_source):
-            # Check recursively in subfolders
-            found_smart = False
-            for root, dirs, files in os.walk(source_base):
-                # Check dirs
-                if os.path.basename(asset_path) in dirs:
-                     potential = os.path.join(root, os.path.basename(asset_path))
-                     # Verify it matches the suffix requested to avoid partial matches if complex
-                     # simplistic check:
-                     full_source = potential
-                     found_smart = True
-                     break
-                # Check files
-                if os.path.basename(asset_path) in files:
-                     potential = os.path.join(root, os.path.basename(asset_path))
-                     full_source = potential
-                     found_smart = True
-                     break
+        # Sanitize target path (remove leading slashes/drive letters)
+        safe_target_rel = target_path.strip("/\\").lstrip(".").lstrip("/\\") 
+        if not safe_target_rel:
+            safe_target_rel = "."
             
-            if not found_smart:
-                # Generate a helpful directory listing
-                try:
-                    available = []
-                    for root, dirs, files in os.walk(source_base):
-                        for d in dirs:
-                            rel = os.path.relpath(os.path.join(root, d), source_base)
-                            if len(available) < 15: available.append(f"{rel}/")
-                        for f in files:
-                            rel = os.path.relpath(os.path.join(root, f), source_base)
-                            if len(available) < 15: available.append(rel)
-                    listing = ", ".join(available)
-                except:
-                    listing = "Error listing files"
-                    
-                return f"Error: Asset '{asset_path}' not found in {template_id}. Available in root: [{listing}...]"
+        full_target = os.path.join(self.project_root, safe_target_rel)
+        
+        # Double check containment
+        if not os.path.normpath(full_target).startswith(os.path.normpath(self.project_root)):
+             return f"Error: Invalid target path '{target_path}'. Must be within project root."
+
+        # 3. Validation & Execution
+        if not os.path.exists(full_source):
+            return f"Error: Asset source '{full_source}' does not exist."
 
         try:
-            # Determine effective target
-            effective_target = full_target
+            # Source is DIR (assets folder)
+            # We want to merge contents into Project Root + Target Path
+            # shutil.copytree with dirs_exist_ok=True does exactly this (merges)
+            os.makedirs(full_target, exist_ok=True)
+            shutil.copytree(full_source, full_target, dirs_exist_ok=True)
             
-            if not os.path.isdir(full_source): # Source is FILE
-                # If target looks like a DIR (no ext) or is existing DIR
-                _, ext = os.path.splitext(full_target)
-                if (not ext and not os.path.exists(full_target)) or os.path.isdir(full_target):
-                    os.makedirs(full_target, exist_ok=True)
-                    effective_target = os.path.join(full_target, os.path.basename(full_source))
-                else:
-                    os.makedirs(os.path.dirname(full_target), exist_ok=True)
-            else: # Source is DIR
-                 os.makedirs(os.path.dirname(full_target), exist_ok=True)
-
-            message = ""
-            if os.path.isdir(full_source):
-                # Copy Directory
-                # Note: copytree with dirs_exist_ok=True MERGES content.
-                shutil.copytree(full_source, full_target, dirs_exist_ok=True)
-                message = f"Directory '{asset_path}' (resolved to {os.path.basename(full_source)}) installed to '{target_path}'."
-            else:
-                # Copy File
-                shutil.copy2(full_source, effective_target)
-                message = f"File '{asset_path}' installed to '{effective_target}'."
-            
-            return f"SUCCESS: {message}"
+            return f"SUCCESS: Template '{template_id}' installed into '{full_target}'."
 
         except Exception as e:
-            return f"Error installing assets: {str(e)}"
+            return f"Error installing template: {str(e)}"
 
     def search_templates(self, query: str, template_id: Optional[str] = None, limit: int = 5, verbose: bool = False) -> str:
         """
@@ -198,6 +125,9 @@ class CrickCoderTemplateTools(Toolkit):
             
             all_results = []
 
+            # Accumulate ALL results from all tables first
+            keys_seen = set()
+            
             for table_name in tables_to_search:
                 # table_name should be a string now.
                 
@@ -209,29 +139,90 @@ class CrickCoderTemplateTools(Toolkit):
                     reranker=False
                 )
                 
-                # Perform Search
+                # Perform Search - Fetch 'limit' per table to ensure coverage
                 results = vector_db.search(query, limit=limit)
                 
                 for res in results:
                     # Enrich with template name
-                    # Agno Document uses 'content' and 'meta_data'
-                    # We need to access the correct dict to inject source_template
                     if hasattr(res, 'meta_data') and isinstance(res.meta_data, dict):
                          res.meta_data["source_template"] = table_name
                     elif hasattr(res, 'metadata') and isinstance(res.metadata, dict):
                          res.metadata["source_template"] = table_name
                     
-                    all_results.append(res)
+                    # Deduplicate based on content hash or path + template
+                    # (Simple dedup to avoid exact duplicates if any)
+                    content = getattr(res, 'content', '') or getattr(res, 'page_content', '')
+                    if content not in keys_seen:
+                        keys_seen.add(content)
+                        all_results.append(res)
+            
+            # Results are returned in natural order (or shuffled by the DB logic if any).
+            # Explicit sorting by score/distance deemed unnecessary/incorrect for this use case.
+
+
+            # Determine candidates for output
+            # If using AI Filter, we can be more generous with input context
+            candidate_limit = limit * 2 if self.llm_settings else limit
+            final_candidates = all_results[:candidate_limit]
             
             # Format Output
             output = f"## Search Results for '{query}'"
             if template_id:
                 output += f" in template '{template_id}'"
-            if not verbose:
-                output += " (Compact Mode - Use `verbose=True` for full code)"
             output += "\n\n"
 
-            for i, item in enumerate(all_results[:limit]): 
+            # ------------------------------------------------------------------
+            # SMART RAG LOGIC (Ephemeral Agent) - Only if LLMSettings provided
+            # ------------------------------------------------------------------
+            if self.llm_settings:
+                # 1. Format Raw Context for the Agent
+                raw_context = ""
+                for i, item in enumerate(final_candidates): 
+                    content = getattr(item, 'content', '') or getattr(item, 'page_content', '')
+                    meta = getattr(item, 'meta_data', {}) or getattr(item, 'metadata', {})
+                    path = meta.get("path", "unknown")
+                    name = meta.get("component_name", "Unknown")
+                    tmpl = meta.get("source_template", "unknown")
+                    
+                    # We send everything to the agent, let it decide what's relevant
+                    raw_context += f"--- RESULT {i+1}: {name} (Template: {tmpl}, File: {path}) ---\n{content}\n\n"
+
+                if not raw_context.strip():
+                     return "No relevant templates found to analyze."
+
+                # 2. Spawn Ephemeral Agent
+                try:
+                    model = build_model_for_runtime(
+                        provider=self.llm_settings.provider,
+                        model_id=self.llm_settings.model_id,
+                        temperature=0.1, 
+                        api_key=self.llm_settings.api_key,
+                        base_url=self.llm_settings.base_url
+                    )
+                    
+                    agent = Agent(
+                        model=model,
+                        description="Template Architect Agent",
+                        instructions=load_prompt("brain/template_architect.md"),
+                        markdown=True
+                    )
+                    
+                    user_msg = f"USER QUERY: {query}\n\nRAW RESULTS:\n{raw_context}"
+                    
+                    # Run generic synchronous run 
+                    response = agent.run(user_msg)
+                    return f"## Smart Search Results (AI Filtered)\n\n{response.content}"
+                    
+                except Exception as ai_e:
+                    # Fallback to standard listing if AI fails
+                    output += f"\n*(Smart RAG failed: {ai_e}. Showing raw results below)*\n\n"
+                    # Fallback to original limit
+                    final_candidates = all_results[:limit]
+            # ------------------------------------------------------------------
+            # FALLBACK / LEGACY OUTPUT (If no LLMSettings or AI failed)
+            # ------------------------------------------------------------------
+            
+            for i, item in enumerate(final_candidates): 
                 # Agno Document uses 'content' and 'meta_data'
                 content = getattr(item, 'content', '') or getattr(item, 'page_content', '')
                 meta = getattr(item, 'meta_data', {}) or getattr(item, 'metadata', {})
@@ -250,23 +241,19 @@ class CrickCoderTemplateTools(Toolkit):
                 output += f"**File**: {path}\n"
                 output += f"**Selector**: `{selector}`\n"
                 
+                # Compact vs Verbose logic
+                short_desc = (content[:300] + '...') if len(content) > 300 else content
+                
                 if verbose:
                     output += f"**Description**: {content}\n\n"
                     if code_snippet:
-                        output += "**Code Snippet**:\n"
-                        output += "```html\n"
-                        output += code_snippet + "\n"
-                        output += "```\n"
+                        output += "**Code Snippet**:\n```html\n" + code_snippet + "\n```\n"
                     else:
-                        # Fallback for old/text chunks
-                        output += "**Content**:\n"
-                        output += "```" + (meta.get("language", "") or "") + "\n"
-                        output += content + "\n"
-                        output += "```\n"
+                        output += "**Content**:\n```\n" + content + "\n```\n"
                 else:
-                    # Compact: Truncate content/description
-                    short_desc = (content[:300] + '...') if len(content) > 300 else content
                     output += f"**Snippet Preview**: {short_desc}\n"
+                    if code_snippet or len(content) > 300:
+                        output += "*(Full code hidden. Use `verbose=True` to view)*\n"
                 
                 output += "\n---\n\n"
 

@@ -58,7 +58,8 @@ class CrickBrainTools(Toolkit):
             provider=self.llm_settings.provider,
             model_id=self.llm_settings.model_id,
             temperature=0.1, # Low temp for precise formatting
-            api_key=self.llm_settings.api_key
+            api_key=self.llm_settings.api_key,
+            base_url=self.llm_settings.base_url
         )
 
         # Specialized System Prompt based on Doc Type

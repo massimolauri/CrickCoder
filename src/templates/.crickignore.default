@@ -46,5 +46,38 @@ dist/
 *.local
 *.local.*
 
-#Other
+# Media & Assets (Binary/Heavy)
 *.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.mp4
+*.webm
+*.mp3
+*.wav
+*.pdf
+*.zip
+*.tar.gz
+*.rar
+
+# Fonts (Binary)
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.eot
+
+# Minified & Source Maps (Search Noise)
+*.min.js
+# Styles (Ignore all raw CSS, prefer HTML structure)
+*.css
+*.js
+
+
+# IDE & System
+.DS_Store
+Thumbs.db
+

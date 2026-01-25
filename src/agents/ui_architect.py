@@ -44,7 +44,8 @@ def build_ui_architect(project_root: str, session_id: str, auto_approval: bool =
         provider=llm_settings.provider,
         model_id=llm_settings.model_id,
         temperature=llm_settings.temperature,
-        api_key=llm_settings.api_key
+        api_key=llm_settings.api_key,
+        base_url=llm_settings.base_url
     )
 
     return Agent(

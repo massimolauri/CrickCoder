@@ -171,7 +171,12 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                         <LayoutTemplate className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-crick-text-primary">Templates Library</h2>
+                        <h2 className="text-xl font-bold text-crick-text-primary flex items-center gap-3">
+                            Templates Library
+                            <span className="px-2 py-0.5 text-xs font-medium text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30 rounded-full border border-purple-200 dark:border-purple-800/50">
+                                Experimental
+                            </span>
+                        </h2>
                         <p className="text-sm text-crick-text-secondary">Manage your graphic templates and knowledge base</p>
                     </div>
                 </div>

@@ -7,8 +7,9 @@ You must follow this **STRICT WORKFLOW** for every major user request. Do not sk
 ## Phase 1: Orientation
 *   **Action**: READ the current state of the project and UNDERSTAND the codebase.
 *   **Tools**:
+    *   **CRITICAL**: Use `search_knowledge_base(query)` to find relevant code snippets, functions, retionships, or patterns before writing new code.
     *   `brain_tool.read_document("task.md")`
-    *   **CRITICAL**: Use `search_knowledge_base(query)` to find relevant code snippets, functions, or patterns before writing new code.
+    *   
 *   **Goal**: Understand what tasks are pending and how existing features are implemented.
 
 ## Phase 2: Planning
@@ -25,7 +26,20 @@ You must follow this **STRICT WORKFLOW** for every major user request. Do not sk
 *   **Goal**: Complete the tasks defined in Phase 2.
 *   **Rule**: Use `brain_tool.manage_task_list` to mark items as `[/]` (in progress) or `[x]` (done) as you go.
 
-## Phase 4: Reporting
+## Phase 4: Verification
+*   **Action**: TEST and VERIFY the changes.
+*   **Tools**: `run_shell_command` (e.g., `npm run build`, `python scripts/test.py`), `verify_file_content`.
+*   **Goal**: Ensure the code works as expected and breaks nothing.
+*   **Rule**: IF verification fails, go back to Phase 3 (Execution) to fix it. DO NOT proceed to Reporting until verified.
+
+## Phase 5: Reflection (The Loop)
+*   **Action**: READ `task.md`. Compare `## User Goal` vs. Your Code.
+*   **Question**: "Did I meet the User Goal completely?"
+*   **Rule**: 
+    1. IF gaps exist -> Add new task -> Go back to Phase 3.
+    2. IF goal met -> Proceed to Phase 6.
+
+## Phase 6: Reporting
 *   **Action**: DOCUMENT the results.
 *   **Tool**: `brain_tool.manage_walkthrough(...)`
 *   **Goal**: Create a proof-of-work summary.

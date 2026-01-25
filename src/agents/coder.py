@@ -1,7 +1,9 @@
 import platform
 from typing import Optional
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from src.core.factory_models import build_model_for_runtime
+from src.core.model_limits import get_token_limit_for_model
 from src.core.knowledge import get_shared_knowledge
 from src.core.storage import get_agent_storage
 from src.prompts.loader import load_prompt
@@ -46,14 +48,15 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         enable_confirmation=enable_tool_confirmation
     )
     
-    template_tools = CrickCoderTemplateTools(project_root=project_root)
+    template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
 
     # 4. Build Model
     model = build_model_for_runtime(
         provider=llm_settings.provider,
         model_id=llm_settings.model_id,
         temperature=llm_settings.temperature,
-        api_key=llm_settings.api_key
+        api_key=llm_settings.api_key,
+        base_url=llm_settings.base_url
     )
 
     # 5. Create Agent
@@ -61,6 +64,12 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         name="Coder",
         role="Senior Developer",
         model=model,
+        # Compression Manager
+        compression_manager=CompressionManager(
+            model=model,
+            compress_tool_results=True,
+            compress_token_limit=get_token_limit_for_model(llm_settings.model_id, llm_settings.compression_threshold)
+        ),
         # Shared Knowledge
         knowledge=get_shared_knowledge(project_root),
         search_knowledge=True, 

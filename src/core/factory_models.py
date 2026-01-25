@@ -43,7 +43,8 @@ def build_model_for_runtime(
     provider: str,
     model_id: str,
     temperature: float,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None
 ) -> Any:
     """
     Creates an Agno model instance with provided credentials and settings.
@@ -57,7 +58,7 @@ def build_model_for_runtime(
     if not model_class:
         raise ValueError(f"Unknown provider: {provider}. Supported: {list(MODEL_REGISTRY.keys())}")
 
-    logger.info(f"Building model: {provider_key} | ID: {model_id} | Temp: {temperature}")
+    logger.info(f"Building model: {provider_key} | ID: {model_id} | Temp: {temperature} | BaseURL: {base_url}")
 
     # Configuration dictionary for the constructor
     config = {
@@ -68,5 +69,9 @@ def build_model_for_runtime(
     # Add api_key only if provided (Ollama for example doesn't use it)
     if api_key:
         config["api_key"] = api_key
+
+    # Add base_url if provided (Critical for OpenAI Compatible / Local models)
+    if base_url:
+        config["base_url"] = base_url
 
     return model_class(**config)

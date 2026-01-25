@@ -26,6 +26,8 @@ class LLMSettings(BaseModel):
     model_id: str
     api_key: str
     temperature: float = 0.2
+    compression_threshold: Optional[int] = None
+    base_url: Optional[str] = None
 
 class ChatRequest(BaseModel):
     """Payload for starting a new chat turn."""
