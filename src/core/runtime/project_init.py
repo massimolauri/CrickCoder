@@ -10,7 +10,7 @@ try:
     from src import BASE_DIR
 except ImportError:
     # Fallback calculation if src package not properly initialized
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def get_db_path(project_root: Optional[str] = None) -> str:
@@ -50,7 +50,7 @@ def _create_default_crickignore(filepath: str) -> None:
     """
     # Template path
     template_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),  # src directory
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),  # src directory
         "templates",
         ".crickignore.default"
     )

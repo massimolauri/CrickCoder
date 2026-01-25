@@ -15,14 +15,14 @@ class VibingManager:
     without an intermediary Orchestrator or Team Leader.
     """
 
-    def __init__(self, session_id: str, project_root: str, auto_approval: bool = True, llm_settings: Optional[LLMSettings] = None):
+    def __init__(self, session_id: str, project_root: str, auto_approval: bool = True, llm_settings: Optional[LLMSettings] = None, selected_theme_id: Optional[str] = None):
         self.session_id = session_id
         self.project_root = project_root
 
         # 1. Build specialized Agents via Factory
         # The factory returns a map: {"CODER": coder_obj, "ARCHITECT": arch_obj}
         # auto_approval is now True by default as per your new architecture
-        self.agents_map: Dict[str, Agent] = build_agents(project_root, session_id, auto_approval, llm_settings)
+        self.agents_map: Dict[str, Agent] = build_agents(project_root, session_id, auto_approval, llm_settings, selected_theme_id)
 
     async def arun(
         self, 

@@ -5,10 +5,10 @@ import time
 from typing import Dict, Optional, Any, Tuple
 from dataclasses import dataclass
 
-from src.core.storage import TABLE_NAME
-from src.core.project_init import get_db_path
-from src.core.indexer_engine import UniversalCodeIndexer
-from src.core.watcher import start_watcher
+from src.core.storage.storage import TABLE_NAME
+from src.core.runtime.project_init import get_db_path
+from src.core.indexing.indexer_engine import UniversalCodeIndexer
+from src.core.runtime.watcher import start_watcher
 
 logger = logging.getLogger(__name__)
 

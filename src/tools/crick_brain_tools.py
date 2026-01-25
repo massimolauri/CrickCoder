@@ -2,8 +2,8 @@ import os
 from typing import Optional
 from agno.tools import Toolkit
 from agno.agent import Agent
-from src.core.storage import get_agent_storage
-from src.core.factory_models import build_model_for_runtime
+from src.core.storage.storage import get_agent_storage
+from src.core.config.factory_models import build_model_for_runtime
 from src.models import LLMSettings
 from src.prompts.loader import load_prompt
 

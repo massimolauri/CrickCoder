@@ -4,9 +4,9 @@ from typing import Optional, List, Dict, Any
 from agno.tools import Toolkit
 from agno.vectordb.lancedb import LanceDb, SearchType
 from agno.agent import Agent
-from src.core.embedder import get_shared_embedder
+from src.core.storage.embedder import get_shared_embedder
 from src.models import LLMSettings
-from src.core.factory_models import build_model_for_runtime
+from src.core.config.factory_models import build_model_for_runtime
 from src.prompts.loader import load_prompt
 
 class CrickCoderTemplateTools(Toolkit):

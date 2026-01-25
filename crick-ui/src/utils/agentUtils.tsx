@@ -11,6 +11,12 @@ export const AGENT_CONFIG: Record<string, AgentConfig> = {
     bg: "bg-purple-50 dark:bg-purple-500/10",
     icon: <Search size={12} />
   },
+  Planner: {
+    color: "text-purple-600 dark:text-purple-400",
+    border: "border-purple-200 dark:border-purple-500/30",
+    bg: "bg-purple-50 dark:bg-purple-500/10",
+    icon: <Search size={12} />
+  },
   Coder: {
     color: "text-emerald-600 dark:text-emerald-400",
     border: "border-emerald-200 dark:border-emerald-500/30",

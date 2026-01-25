@@ -60,12 +60,24 @@ export function useChat(options: UseChatOptions) {
   // Stati separati per evitare re-rendering completi
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [streaming, setStreaming] = useState(false);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(
-    sessionService.getCurrentSession(projectPath)
-  );
+
+  // Initializes session ID synchronously if possible to avoid null flash
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
+    const stored = sessionService.getCurrentSession(projectPath);
+    if (stored) return stored;
+
+    // If no stored session, generate one immediately if projectPath exists
+    if (projectPath) {
+      const newId = sessionService.generateLocalSessionId();
+      sessionService.saveCurrentSession(projectPath, newId);
+      return newId;
+    }
+    return null;
+  });
+
   const [error, setError] = useState<string | null>(null);
-  const [selectedAgentId, setSelectedAgentIdState] = useState<"PLANNER" | "CODER">(
-    getAgentIdForSession(sessionService.getCurrentSession(projectPath))
+  const [selectedAgentId, setSelectedAgentIdState] = useState<"PLANNER" | "CODER">(() =>
+    getAgentIdForSession(currentSessionId)
   );
   const [llmSettings, setLlmSettings] = useState<LLMSettings>(
     options.llmSettings || llmSettingsStorage.get() || {
@@ -90,14 +102,14 @@ export function useChat(options: UseChatOptions) {
     setSelectedAgentIdState(value);
   }, [currentSessionId]);
 
-  // Inizializza la sessione se non esiste
+  // Inizializza la sessione se cambia projectPath e non c'è sessione
   useEffect(() => {
     if (projectPath && !currentSessionId) {
       const newSessionId = sessionService.generateLocalSessionId();
       setCurrentSessionId(newSessionId);
       sessionService.saveCurrentSession(projectPath, newSessionId);
     }
-  }, [projectPath, currentSessionId]);
+  }, [projectPath]);
 
   // Aggiorna selectedAgentId quando cambia la sessione
   useEffect(() => {
@@ -137,11 +149,11 @@ export function useChat(options: UseChatOptions) {
     abortControllerRef.current = new AbortController();
 
 
-    // Append context if theme selected
+    // Append context if theme selected (MOVED TO BACKEND LOGIC)
     let messageContent = content;
-    if (selectedThemeId) {
-      messageContent += `\n\n[System Context] The user has selected the template/theme: "${selectedThemeId}". Please check the installed templates database for this specific theme to use its styles and components if relevant to the request.`;
-    }
+    // if (selectedThemeId) {
+    //   messageContent += `\n\n[System Context] The user has selected the template/theme: "${selectedThemeId}". Please check the installed templates database for this specific theme to use its styles and components if relevant to the request.`;
+    // }
 
     // Aggiungi messaggio utente (mostra contenuto originale in UI)
     const userMessage: ChatMessage = {
@@ -289,6 +301,7 @@ export function useChat(options: UseChatOptions) {
           agentId: selectedAgentId,
           llmSettings: llmSettings,
           autoApproval: true,
+          selectedThemeId: selectedThemeId,
           onEvent: handleEvent,
           onDone: handleDone,
           onError: handleError,

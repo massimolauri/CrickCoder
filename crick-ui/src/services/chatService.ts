@@ -7,6 +7,7 @@ export interface SendMessageOptions {
   agentId?: "ARCHITECT" | "CODER" | "PLANNER";
   llmSettings?: LLMSettings;
   autoApproval?: boolean;
+  selectedThemeId?: string | null;
   onEvent?: EventCallback;
   onDone?: () => void;
   onError?: (error: Error) => void;
@@ -36,6 +37,7 @@ export class ChatService {
       agentId,
       llmSettings,
       autoApproval,
+      selectedThemeId,
       onEvent,
       onDone,
       onError,
@@ -43,7 +45,7 @@ export class ChatService {
     } = options;
 
     try {
-      const body = buildChatBody(message, projectPath, sessionId, agentId, llmSettings, autoApproval ?? true);
+      const body = buildChatBody(message, projectPath, sessionId, agentId, llmSettings, autoApproval ?? true, selectedThemeId);
 
       const response = await fetch(`${this.baseUrl}/api/chat`, {
         method: 'POST',

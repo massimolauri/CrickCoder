@@ -7,7 +7,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # Caricamento configurazione (se esiste, altrimenti default vuoto)
-from src.core.ignore import load_crickignore_rules
+from src.core.indexing.ignore import load_crickignore_rules
 
 logger = logging.getLogger(__name__)
 

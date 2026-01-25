@@ -158,7 +158,7 @@ async def event_stream_generator(
     finally:
         if project_path:
             try:
-                from src.core.monitor import codebase_registry
+                from src.core.runtime.monitor import codebase_registry
                 await codebase_registry.release(project_path)
                 logger.debug(f"Released project context for {project_path}")
             except Exception as e:

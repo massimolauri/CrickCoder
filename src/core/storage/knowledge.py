@@ -1,6 +1,6 @@
-from src.core.storage import TABLE_NAME
-from src.core.project_init import get_db_path
-from src.core.indexer_engine import UniversalCodeIndexer
+from src.core.storage.storage import TABLE_NAME
+from src.core.runtime.project_init import get_db_path
+from src.core.indexing.indexer_engine import UniversalCodeIndexer
 
 # Dizionario per memorizzare knowledge base per diversi progetti
 _knowledge_instances = {}

@@ -184,7 +184,8 @@ export function buildChatBody(
   sessionId?: string | null,
   agentId?: "ARCHITECT" | "CODER" | "PLANNER",
   llmSettings?: LLMSettings,
-  autoApproval: boolean = true
+  autoApproval: boolean = true,
+  selectedThemeId?: string | null
 ) {
   return {
     message,
@@ -193,6 +194,7 @@ export function buildChatBody(
     ...(agentId && { agent_id: agentId }),
     ...(llmSettings && { llm_settings: llmSettings }),
     auto_approval: autoApproval,
+    ...(selectedThemeId && { selected_theme_id: selectedThemeId }),
   };
 }
 

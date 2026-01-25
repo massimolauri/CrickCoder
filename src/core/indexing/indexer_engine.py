@@ -9,14 +9,14 @@ from typing import Dict, List, Optional
 # --- Agno Imports ---
 from agno.knowledge import Knowledge
 from agno.vectordb.lancedb import LanceDb, SearchType
-from src.core.embedder import get_shared_embedder
+from src.core.storage.embedder import get_shared_embedder
 
 # --- Chunking Imports ---
 from langchain_text_splitters import RecursiveCharacterTextSplitter, Language
 from langchain_core.documents import Document
 
 # Configurazione Crick (opzionale)
-from src.core.ignore import load_crickignore_rules
+from src.core.indexing.ignore import load_crickignore_rules
 
 class UniversalCodeIndexer:
     def __init__(self, db_path: str, table_name: str):

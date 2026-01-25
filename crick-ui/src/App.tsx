@@ -31,10 +31,16 @@ import { THEME } from '@/constants/theme';
 export default function CrickInterface() {
   // Stato progetto
   const [projectPath, setProjectPath] = useState(() => projectStorage.get() || '');
-  const [llmSettings, setLlmSettings] = useState<LLMSettings>(() => llmSettingsStorage.get() || {
-    provider: "DeepSeek",
-    model_id: "deepseek-chat",
-    api_key: "",
+  const [llmSettings, setLlmSettings] = useState<LLMSettings>(() => {
+    // Force DeepSeek as provider even if storage has something else
+    const stored = llmSettingsStorage.get();
+    return {
+      ...stored,
+      provider: "DeepSeek",
+      model_id: stored?.model_id || "deepseek-chat",
+      api_key: stored?.api_key || "",
+      base_url: "", // Force clear any legacy base_url (es. ZhipuAI) to use DeepSeek default
+    };
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -314,23 +320,12 @@ export default function CrickInterface() {
               <div className="space-y-4">
                 <label className="text-xs font-mono text-slate-500 uppercase tracking-wider">LLM Configuration</label>
 
-                {/* Provider */}
-                <div className="space-y-2">
+                {/* Provider (Locked to DeepSeek) */}
+                <div className="space-y-2 opacity-50 pointer-events-none">
                   <label className="text-sm text-slate-400">Provider</label>
-                  <select
-                    value={llmSettings.provider}
-                    onChange={(e) => setLlmSettings({ ...llmSettings, provider: e.target.value })}
-                    className="w-full bg-crick-surface border border-gray-200 rounded-full px-4 py-2 text-sm text-crick-text-primary outline-none focus:border-crick-accent transition-colors appearance-none"
-                  >
-                    <option value="DeepSeek">DeepSeek</option>
-                    <option value="OpenAiLike">OpenAiLike</option>
-                    <option value="OpenAIChat">OpenAIChat</option>
-                    <option value="Gemini">Gemini</option>
-                    <option value="Nvidia">Nvidia</option>
-                    <option value="Ollama">Ollama</option>
-                    <option value="OpenRouter">OpenRouter</option>
-                    <option value="Claude">Claude</option>
-                  </select>
+                  <div className="w-full bg-crick-surface border border-gray-200 rounded-full px-4 py-2 text-sm text-crick-text-primary">
+                    DeepSeek (Mandatory)
+                  </div>
                 </div>
 
                 {/* Base URL (Visible only for OpenAiLike/LocalAI) */}

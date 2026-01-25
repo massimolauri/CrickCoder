@@ -10,11 +10,11 @@ from typing import Generator, Dict, Any, Optional
 # --- Agno Imports ---
 from agno.knowledge import Knowledge
 from agno.vectordb.lancedb import LanceDb, SearchType
-from src.core.embedder import get_shared_embedder
+from src.core.storage.embedder import get_shared_embedder
 
 # --- Core Imports ---
-from src.core.chunker import AdaptiveChunker
-from src.core.theme_chunker import ThemeChunker
+from src.core.indexing.chunker import AdaptiveChunker
+from src.core.indexing.theme_chunker import ThemeChunker
 from src.models import LLMSettings
 
 logger = logging.getLogger("TemplateIndexer")
@@ -134,9 +134,11 @@ class TemplateIndexer:
             # Instead of naive chunking, we use UIArchitectAgent + BeautifulSoup
             
             # Import dependencies
+            # Wrapper to handle Pydantic Response
             from bs4 import BeautifulSoup
-            from src.agents.ui_architect import build_ui_architect
-            
+            from agno.agent import Agent
+            from src.core.config.factory_models import build_model_for_runtime
+
             # Initialize Architect
             if not self.llm_settings:
                 # Fallback or error? For now, we assume settings are passed.
@@ -144,10 +146,19 @@ class TemplateIndexer:
                 yield {"status": "error", "message": "LLM Settings missing for AI Analysis."}
                 return
 
-            ui_architect_agent = build_ui_architect(
-                project_root=self.project_root, 
-                session_id="indexer-session", # Ephemeral session
-                llm_settings=self.llm_settings
+            model = build_model_for_runtime(
+                 provider=self.llm_settings.provider,
+                 model_id=self.llm_settings.model_id,
+                 temperature=0.1,
+                 api_key=self.llm_settings.api_key,
+                 base_url=self.llm_settings.base_url
+            )
+
+            ui_architect_agent = Agent(
+                model=model,
+                description="UI Architect",
+                instructions="You are an expert UI Architect. Your goal is to analyze HTML and extract components with their categories, names, and selectors. Output valid JSON.",
+                markdown=True
             )
             
             # Wrapper to handle Pydantic Response

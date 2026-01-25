@@ -2,10 +2,10 @@ import platform
 from typing import Optional
 from agno.agent import Agent
 from agno.compression.manager import CompressionManager
-from src.core.factory_models import build_model_for_runtime
-from src.core.model_limits import get_token_limit_for_model
-from src.core.knowledge import get_shared_knowledge
-from src.core.storage import get_agent_storage
+from src.core.config.factory_models import build_model_for_runtime
+from src.core.config.model_limits import get_token_limit_for_model
+from src.core.storage.knowledge import get_shared_knowledge
+from src.core.storage.storage import get_agent_storage
 from src.prompts.loader import load_prompt
 from src.models import LLMSettings
 
@@ -16,7 +16,7 @@ from src.tools.crickcoder_shell_tools import CrickCoderShellTools
 from src.tools.crickcoder_template_tools import CrickCoderTemplateTools
 from pathlib import Path
 
-def build_coder(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None):
+def build_coder(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None, selected_theme_id: Optional[str] = None):
     """
     Builds the Coder Agent (Single Agent with Tools).
     """
@@ -48,7 +48,13 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         enable_confirmation=enable_tool_confirmation
     )
     
-    template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
+    # Base tools list
+    tools_list = [brain_tool, file_tools, shell_tools]
+
+    # Conditional Template Tools
+    if selected_theme_id:
+        template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
+        tools_list.append(template_tools)
 
     # 4. Build Model
     model = build_model_for_runtime(
@@ -67,7 +73,7 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         # Compression Manager
         compression_manager=CompressionManager(
             model=model,
-            compress_tool_results=True,
+            compress_tool_results=False,
             compress_token_limit=get_token_limit_for_model(llm_settings.model_id, llm_settings.compression_threshold)
         ),
         # Shared Knowledge
@@ -75,11 +81,11 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         search_knowledge=True, 
         
         # Tools List
-        tools=[brain_tool, file_tools, shell_tools, template_tools],
+        tools=tools_list,
         
         # Instructions
         instructions=[
-            load_prompt("coder.md"),
+            load_prompt("coder.md", model_id=llm_settings.model_id),
             os_context,
             "Follow the Strict Workflow: Orientation -> Planning -> Execution -> Reporting."
         ],
@@ -88,7 +94,7 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         db=storage,
         session_id=session_id,
         add_history_to_context=True, 
-        num_history_runs=10,
+        num_history_runs=5,
         
         debug_mode=True,
         markdown=True

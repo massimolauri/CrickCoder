@@ -18,12 +18,12 @@ from fastapi.staticfiles import StaticFiles
 
 # --- Local Imports ---
 from src.models import ChatRequest, ContinueRequest, LLMSettings
-from src.core.manager import VibingManager
-from src.core.streamer import event_stream_generator
-from src.core.monitor import codebase_registry
-from src.core.storage import generate_session_id, list_sessions_with_summary, delete_session, get_session_with_runs
-from src.core.template_indexer import TemplateIndexer
-from src.core.server_utils import transform_runs_to_messages, normalize_path
+from src.core.runtime.manager import VibingManager
+from src.core.runtime.streamer import event_stream_generator
+from src.core.runtime.monitor import codebase_registry
+from src.core.storage.storage import generate_session_id, list_sessions_with_summary, delete_session, get_session_with_runs
+from src.core.indexing.template_indexer import TemplateIndexer
+from src.core.runtime.server_utils import transform_runs_to_messages, normalize_path
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -77,9 +77,7 @@ async def get_brain_file(filename: str, project_path: Optional[str] = Query(None
         project_root = normalize_path(project_path=project_path)
         
         # DEBUG LOGGING
-        logger.info(f"Checking Brain File: {filename}")
-        logger.info(f"Raw Project Path: {project_path}")
-        logger.info(f"Normalized Root: {project_root}")
+
         
         if not os.path.exists(project_root):
             logger.error(f"Project root not found: {project_root}")
@@ -88,9 +86,7 @@ async def get_brain_file(filename: str, project_path: Optional[str] = Query(None
         brain_dir = os.path.join(project_root, ".crick", "sessions", session_id, "brain")
         file_path = os.path.join(brain_dir, filename)
         
-        logger.info(f"Calculated Brain Dir: {brain_dir}")
-        logger.info(f"Target File Path: {file_path}")
-        logger.info(f"File Exists: {os.path.exists(file_path)}")
+
         
         if not os.path.exists(file_path):
             # Proviamo a vedere se è un file nuovo e magari ancora non esiste
@@ -161,7 +157,8 @@ async def chat_endpoint(req: ChatRequest):
             session_id=session_id,
             project_root=req.project_path,
             auto_approval=req.auto_approval,
-            llm_settings=req.llm_settings
+            llm_settings=req.llm_settings,
+            selected_theme_id=req.selected_theme_id
         )
 
         # Delegate the streaming execution to the event generator

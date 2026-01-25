@@ -39,6 +39,7 @@ class ChatRequest(BaseModel):
     # If False, Coder pauses on file/shell operations (Safe Mode).
     auto_approval: bool = False
     llm_settings: Optional[LLMSettings] = None 
+    selected_theme_id: Optional[str] = None
 
 class ContinueRequest(BaseModel):
     """Payload for resuming a paused run (HITL)."""
