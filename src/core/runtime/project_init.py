@@ -49,11 +49,15 @@ def _create_default_crickignore(filepath: str) -> None:
         filepath: Path where to create the .crickignore file.
     """
     # Template path
-    template_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),  # src directory
-        "templates",
-        ".crickignore.default"
-    )
+    import sys
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # In frozen bundles, we mapped src/templates -> src/templates
+        base_src_dir = os.path.join(sys._MEIPASS, "src")
+    else:
+        # Development mode: src/core/runtime/../../.. -> src/
+        base_src_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
+    template_path = os.path.join(base_src_dir, "templates", ".crickignore.default")
 
     try:
         with open(template_path, 'r', encoding='utf-8') as tf:
@@ -110,6 +114,12 @@ dist/
 
 #Other
 *.svg
+
+# Lockfiles (Auto-generated)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
 """
 
     with open(filepath, 'w', encoding='utf-8') as f:

@@ -53,6 +53,12 @@ async def event_stream_generator(
 
             # --- 2. CONSUME STREAM ---
             async for event in iterator:
+                
+                # --- NEW: Handle Dictionary Events (e.g. Meta) ---
+                if isinstance(event, dict):
+                    # Directly yield dictionary events (like our 'meta' event)
+                    yield f"data: {json.dumps(event)}\n\n"
+                    continue
 
                 # --- A. CHECK FOR PAUSED STATUS (From Final Object) ---
                 # We check if this event is the final output object and if it's paused.
@@ -137,6 +143,14 @@ async def event_stream_generator(
                      yield f"data: {json.dumps(payload)}\n\n"
                      return
 
+                # --- C. CHECK FOR FAILED STATUS ---
+                # Safe check using string conversion to avoid AttributeError if RunStatus.failed doesn't exist
+                if hasattr(event, "status") and str(event.status).lower().endswith("failed"):
+                     error_msg = getattr(event, "response", "Unknown agent error")
+                     logger.error(f"❌ AGENT FAILED: {error_msg}")
+                     yield f"data: {json.dumps({'type': 'error', 'message': f'Agent Run Failed: {error_msg}'})}\n\n"
+                     return
+
                 # Send payload
                 if payload:
                     yield f"data: {json.dumps(payload)}\n\n"
@@ -153,8 +167,20 @@ async def event_stream_generator(
             raise
 
         except Exception as e:
-            logger.error(f"Critical stream error: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            error_str = str(e)
+            logger.error(f"Critical stream error: {error_str}", exc_info=True)
+            
+            # Formatta errori comuni
+            if "402" in error_str or "Insufficient Balance" in error_str:
+                user_msg = "⚠️ API Error 402: Insufficient Balance. Please check your LLM provider credits."
+            elif "401" in error_str:
+                 user_msg = "⚠️ API Error 401: Unauthorized. Please check your API Key."
+            elif "429" in error_str:
+                 user_msg = "⚠️ API Error 429: Rate Limit Exceeded. Please try again later."
+            else:
+                 user_msg = f"System Error: {error_str}"
+
+            yield f"data: {json.dumps({'type': 'error', 'message': user_msg})}\n\n"
     finally:
         if project_path:
             try:

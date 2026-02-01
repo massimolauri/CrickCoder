@@ -13,7 +13,7 @@ def get_shared_knowledge(project_root: str = None):
         project_root = os.getcwd()
 
     if project_root not in _knowledge_instances:
-        print(f"⚙️ Caricamento Knowledge Base per: {project_root}")
+        print(f"Caricamento Knowledge Base per: {project_root}")
         db_path = get_db_path(project_root)
         indexer = UniversalCodeIndexer(db_path, TABLE_NAME)
         _knowledge_instances[project_root] = indexer.knowledge

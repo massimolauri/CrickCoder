@@ -265,6 +265,16 @@ export function useChat(options: UseChatOptions) {
               agent: 'System',
             });
             break;
+
+          case 'meta':
+            // Aggiorna shadowRunId nel messaggio corrente se ricevuto
+            // Questo permette alla UI di mostrare il bottone Undo/Reject
+            return prevMessages.map((msg, idx) => {
+              if (idx === aiMessageIndex) {
+                return { ...msg, shadowRunId: event.shadow_run_id };
+              }
+              return msg;
+            });
         }
 
         // Crea nuovo array di messaggi con l'aggiornamento

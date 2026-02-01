@@ -7,13 +7,15 @@ interface MessageListProps {
   streaming: boolean;
   lastMessageId: number | undefined;
   renderTimelineItem: (item: TimelineItem, index: number) => React.ReactNode;
+  onUndo?: (runId: string) => void;
 }
 
 const MessageList = React.memo(function MessageList({
   messages,
   streaming,
   lastMessageId,
-  renderTimelineItem
+  renderTimelineItem,
+  onUndo
 }: MessageListProps) {
   return (
     <div className="space-y-10">
@@ -24,6 +26,7 @@ const MessageList = React.memo(function MessageList({
           isLast={msg.id === lastMessageId}
           streaming={streaming}
           renderTimelineItem={renderTimelineItem}
+          onUndo={onUndo}
         />
       ))}
     </div>

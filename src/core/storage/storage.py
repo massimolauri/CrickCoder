@@ -2,6 +2,7 @@ import os
 import sqlite3
 import uuid
 import time
+import logging
 from typing import List, Dict, Optional, Any
 from agno.db.sqlite import SqliteDb
 from agno.db.sqlite import AsyncSqliteDb
@@ -10,6 +11,8 @@ from src import BASE_DIR
 # LanceDB table name for project vectors
 TABLE_NAME = "project_vectors"
 from agno.db import SessionType
+
+logger = logging.getLogger(__name__)
 
 
 def generate_session_id() -> str:
@@ -137,8 +140,12 @@ async def list_sessions_with_summary(project_root: str = None, limit: int = 50) 
 
     try:
         # Ottieni le sessioni come dizionari grezzi (i campi JSON sono ancora stringhe)
-        
-        sessions = await storage.get_sessions(session_type=SessionType.AGENT,deserialize=True)
+        try:
+             sessions = await storage.get_sessions(session_type=SessionType.AGENT,deserialize=True)
+        except Exception as e:
+             # Se la tabella non esiste (nuovo progetto), ritorna lista vuota
+             logger.warning(f"Error reading sessions (might be new project): {e}")
+             return []
 
         if not sessions:
             return []

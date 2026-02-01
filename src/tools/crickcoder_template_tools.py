@@ -1,4 +1,5 @@
 import os
+import shutil
 import lancedb
 from typing import Optional, List, Dict, Any
 from agno.tools import Toolkit
@@ -26,7 +27,22 @@ class CrickCoderTemplateTools(Toolkit):
         current_file = os.path.abspath(__file__)
         self.server_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
         
-        self.db_path = os.path.join(self.server_root, "knowledge_base", "templates_db")
+        # GLOBAL USER PATH: ~/.crickcoder
+        self.global_crick_dir = os.path.join(os.path.expanduser("~"), ".crickcoder")
+        
+        # Use Global Knowledge Base for Templates
+        self.db_path = os.path.join(self.global_crick_dir, "knowledge_base", "templates_db")
+        
+        # --- BOOTSTRAP: Copy System Templates if Global DB missing ---
+        if not os.path.exists(self.db_path):
+            bundled_db_path = os.path.join(self.server_root, "knowledge_base", "templates_db")
+            if os.path.exists(bundled_db_path):
+                try:
+                    # Copy the pre-filled LanceDB
+                    shutil.copytree(bundled_db_path, self.db_path)
+                    print(f"Bootstrapped System Templates to {self.db_path}")
+                except Exception as e:
+                    print(f"⚠️ Failed to copy system templates: {e}")
         
         # Shared Embedder (Cached Singleton)
         self.embedder = get_shared_embedder()
@@ -48,13 +64,18 @@ class CrickCoderTemplateTools(Toolkit):
         """
         import shutil
         
-        # 1. Resolve Source Path
-        # Source Base: <SERVER_ROOT>/public/templates/<id>/assets
-        source_base = os.path.join(self.server_root, "public", "templates", template_id, "assets")
-        
-        # Check if template/assets exist
-        if not os.path.exists(source_base):
-             return f"Error: Template assets '{template_id}' not found (checked: {source_base})."
+        # 1. Resolve Source Path (Check Global User Dir, then Bundled Server Root)
+        # Check ~/.crickcoder/public/templates/<id>/assets
+        global_source = os.path.join(self.global_crick_dir, "public", "templates", template_id, "assets")
+        # Check Bundled/Deployed <server_root>/public/templates/<id>/assets
+        bundled_source = os.path.join(self.server_root, "public", "templates", template_id, "assets")
+
+        if os.path.exists(global_source):
+             source_base = global_source
+        elif os.path.exists(bundled_source):
+             source_base = bundled_source
+        else:
+             return f"Error: Template assets '{template_id}' not found (Checked Global: {global_source}, Bundled: {bundled_source})."
 
         full_source = source_base
 
@@ -267,7 +288,7 @@ class CrickCoderTemplateTools(Toolkit):
         Lists all the templates currently installed in the system.
         """
         if not os.path.exists(self.db_path):
-            return "No templates installed."
+            return f"No templates installed (Database not found at {self.db_path})."
             
         try:
             db = lancedb.connect(self.db_path)
@@ -278,8 +299,8 @@ class CrickCoderTemplateTools(Toolkit):
             tables = getattr(response, 'tables', [])
             
             if not tables:
-                 return "No templates installed."
+                 return f"No templates installed (Database empty at {self.db_path})."
             
-            return "Installed Templates: " + ", ".join(tables)
+            return f"Installed Templates (from {self.db_path}): " + ", ".join(tables)
         except Exception as e:
-            return f"Error listing templates: {str(e)}"
+            return f"Error listing templates from {self.db_path}: {str(e)}"

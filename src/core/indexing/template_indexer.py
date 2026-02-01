@@ -23,8 +23,13 @@ class TemplateIndexer:
     def __init__(self, project_root: str, llm_settings: Optional[LLMSettings] = None):
         self.project_root = project_root
         self.llm_settings = llm_settings
-        self.knowledge_base_dir = os.path.join(project_root, "knowledge_base")
-        self.public_templates_dir = os.path.join(project_root, "public", "templates")
+        
+        # GLOBAL PATH: ~/.crickcoder (User Home Directory)
+        # Used for persistent internal data (Themes, Knowledge Base) across all projects.
+        self.global_crick_dir = os.path.join(os.path.expanduser("~"), ".crickcoder")
+        
+        self.knowledge_base_dir = os.path.join(self.global_crick_dir, "knowledge_base")
+        self.public_templates_dir = os.path.join(self.global_crick_dir, "public", "templates")
         
         # Ensure directories exist
         os.makedirs(self.knowledge_base_dir, exist_ok=True)

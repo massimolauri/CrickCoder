@@ -23,6 +23,11 @@ dist/
 *.class
 *.jar
 
+# Lockfiles (Auto-generated) & Dependency Manifests
+package.json
+package-lock.json
+yarn.lock
+
 # File di log e temporanei
 *.log
 *.tmp

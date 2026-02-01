@@ -46,12 +46,12 @@ class CodebaseRegistry:
                 inactive_time = current_time - ctx.last_used
                 if inactive_time > self._cleanup_interval:
                     to_remove.append(path)
-                    logger.debug(f"🧹 Progetto inattivo da {inactive_time:.0f}s: {os.path.basename(path)} (ref_count: {ctx.ref_count})")
+                    logger.debug(f"Progetto inattivo da {inactive_time:.0f}s: {os.path.basename(path)} (ref_count: {ctx.ref_count})")
 
             for path in to_remove:
                 await self._stop_context(path)
                 del self._active_contexts[path]
-                logger.info(f"🧹 Cleanup: rimosso progetto inattivo {os.path.basename(path)}")
+                logger.info(f"Cleanup: rimosso progetto inattivo {os.path.basename(path)}")
 
             self._last_cleanup = current_time
 
@@ -76,15 +76,15 @@ class CodebaseRegistry:
 
                 is_alive = await loop.run_in_executor(None, join_observer)
                 if is_alive:
-                    logger.warning(f"⚠️ Watcher thread ancora attivo dopo timeout per {path}")
+                    logger.warning(f"Watcher thread ancora attivo dopo timeout per {path}")
             except Exception as e:
                 logger.error(f"Errore fermando watcher per {path}: {e}")
 
-        logger.info(f"🛑 Stopped watcher per: {os.path.basename(path)}")
+        logger.info(f"Stopped watcher per: {os.path.basename(path)}")
 
     async def _create_context(self, abs_path: str) -> ActiveContext:
         """Crea un nuovo contesto per un progetto."""
-        logger.info(f"👁️ Starting Services for: {abs_path}")
+        logger.info(f"Starting Services for: {abs_path}")
 
         # Init Indexer
         db_path = get_db_path(abs_path)
@@ -132,23 +132,23 @@ class CodebaseRegistry:
                 ctx = self._active_contexts[abs_path]
                 ctx.ref_count += 1
                 ctx.last_used = time.time()
-                logger.debug(f"📈 Incrementato ref_count per {abs_path}: {ctx.ref_count}")
+                logger.debug(f"Incrementato ref_count per {abs_path}: {ctx.ref_count}")
                 return
 
             # 2. Crea nuovo contesto
             ctx = await self._create_context(abs_path)
             self._active_contexts[abs_path] = ctx
-            logger.info(f"✅ Nuovo progetto attivato: {abs_path} (ref_count: {ctx.ref_count})")
+            logger.info(f"Nuovo progetto attivato: {abs_path} (ref_count: {ctx.ref_count})")
 
     async def shutdown(self):
         """Ferma tutti i watcher (chiamato alla chiusura del server)."""
         async with self._lock:
             for path, ctx in list(self._active_contexts.items()):
                 await self._stop_context(path)
-                logger.info(f"🛑 Stopped watcher per: {os.path.basename(path)}")
+                logger.info(f"Stopped watcher per: {os.path.basename(path)}")
 
             self._active_contexts.clear()
-            logger.info("✅ Tutti i progetti fermati")
+            logger.info("Tutti i progetti fermati")
 
     async def release(self, raw_path: str):
         """
@@ -159,17 +159,17 @@ class CodebaseRegistry:
 
         async with self._lock:
             if abs_path not in self._active_contexts:
-                logger.warning(f"⚠️ Tentativo di rilasciare progetto non attivo: {abs_path}")
+                logger.warning(f"Tentativo di rilasciare progetto non attivo: {abs_path}")
                 return
 
             ctx = self._active_contexts[abs_path]
             ctx.ref_count -= 1
             ctx.last_used = time.time()
 
-            logger.debug(f"📉 Decrementato ref_count per {abs_path}: {ctx.ref_count}")
+            logger.debug(f"Decrementato ref_count per {abs_path}: {ctx.ref_count}")
 
             if ctx.ref_count == 0:
-                logger.info(f"⏱️  Progetto {abs_path} ora inattivo (sarà rimosso dal cleanup)")
+                logger.info(f"Progetto {abs_path} ora inattivo (sarà rimosso dal cleanup)")
 
     async def get_active_projects(self):
         """Restituisce lista dei progetti attivi con ref_count."""

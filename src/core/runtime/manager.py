@@ -43,10 +43,27 @@ class VibingManager:
         
         if not active_agent:
             error_msg = f"Agent '{agent_id}' not found in current project context."
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise ValueError(error_msg)
 
-        logger.info(f"🚀 Routing request to: {agent_id} | Session: {self.session_id}")
+        logger.info(f"Routing request to: {agent_id} | Session: {self.session_id}")
+
+        # --- 0. Context Injection (Shadow Workspace) ---
+        from src.core.runtime.shadow_workspace import ShadowWorkspace
+        # We need a stable run_id for this turn to track changes.
+        # If kwargs has run_id use it, else generate (though typically run_id is internal to Agent)
+        # Ideally we want the SAME run_id that the agent receives.
+        # Since Agno generates run_id internally if not passed, we might be out of sync if we generate one here.
+        # HOWEVER, we can simple trigger the context with a "Turn ID".
+        # Let's generate a unique ID for this 'Action Turn' which suffices for the Undo feature.
+        import uuid
+        current_run_context_id = str(uuid.uuid4())
+        
+        ShadowWorkspace.get_instance().set_context(
+            project_root=self.project_root,
+            session_id=self.session_id,
+            run_id=current_run_context_id
+        )
 
         # --- Context Injection: Read Task List from Brain ---
         # This ensures the agent is aware of the current project status even in new sessions.
@@ -68,6 +85,13 @@ class VibingManager:
             logger.warning(f"Failed to inject task context: {e}")
 
         # 2. Proxy Execution Stream
+        # Yield metadata event locally first
+        yield {
+            "type": "meta",
+            "shadow_run_id": current_run_context_id,
+            "agent": agent_id
+        }
+
         # Directly call the agent's arun method
         async for event in active_agent.arun(
             message,
@@ -80,4 +104,12 @@ class VibingManager:
             if hasattr(event, "agent_name") and not event.agent_name:
                 event.agent_name = active_agent.name
             
+            # Inject shadow_run_id into RunResponse objects if possible, for correlation
+            if hasattr(event, "shadow_run_id"):
+                 pass # Already set?
+            else:
+                 # We can't easily monkeypatch internal Pydantic models of Agno on the fly without risk.
+                 # Rely on the initial "meta" event for the UI to track the ID.
+                 pass
+
             yield event

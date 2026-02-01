@@ -2,7 +2,7 @@
 Prompt loading utilities for Crick.
 """
 import os
-
+import sys
 
 def load_prompt(filename: str, model_id: str = None) -> str:
     """
@@ -20,7 +20,18 @@ def load_prompt(filename: str, model_id: str = None) -> str:
     Returns:
         Content of the prompt file as string.
     """
-    prompts_dir = os.path.dirname(__file__)
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        # In --onedir mode, assets are usually in _internal/src/prompts if mapped there
+        # but sys._MEIPASS usually points to _internal.
+        # We mapped 'src/prompts' -> 'src/prompts' in spec, so it should be at _MEIPASS/src/prompts
+        if hasattr(sys, '_MEIPASS'):
+            prompts_dir = os.path.join(sys._MEIPASS, 'src', 'prompts')
+        else:
+             # Fallback, though _MEIPASS should exist
+             prompts_dir = os.path.join(os.path.dirname(sys.executable), 'src', 'prompts')
+    else:
+        prompts_dir = os.path.dirname(__file__)
     
     # 1. Try Model-Specific Path
     if model_id:

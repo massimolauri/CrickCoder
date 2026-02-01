@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, FileDiff } from 'lucide-react';
 import type { ChatMessage, TimelineItem } from '@/types/api.types';
 
 
@@ -8,13 +8,15 @@ interface MessageItemProps {
   isLast: boolean;
   streaming: boolean;
   renderTimelineItem: (item: TimelineItem, index: number) => React.ReactNode;
+  onUndo?: (runId: string) => void;
 }
 
 const MessageItem = React.memo(function MessageItem({
   msg,
   isLast,
   streaming,
-  renderTimelineItem
+  renderTimelineItem,
+  onUndo
 }: MessageItemProps) {
   // Hide AI message if it has no content, no timeline, and is not currently streaming (e.g. stopped)
   const isEmpty = !msg.content && (!msg.timeline || msg.timeline.length === 0);
@@ -49,6 +51,22 @@ const MessageItem = React.memo(function MessageItem({
                 <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce-slow delay-100 block" />
                 <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce-slow delay-200 block" />
               </span>
+            )}
+
+            {/* UNDO BUTTON */}
+            {msg.shadowRunId && !streaming && (
+              <div className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-1">
+                <button
+                  onClick={() => onUndo?.(msg.shadowRunId!)}
+                  className="text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md border border-blue-200 dark:border-blue-800/50 transition-all flex items-center gap-1.5"
+                  title="Review files modified by this run"
+                >
+                  <FileDiff size={12} />
+                  Review Changes
+                </button>
+                {/* Placeholder for Show Diff (Future) */}
+                {/* <button className="...">Show Diff</button> */}
+              </div>
             )}
           </div>
         )}

@@ -91,6 +91,15 @@ class CrickCoderFileTools(Toolkit):
             if not (safe):
                 log_error(f"Attempted to save file: {file_name}")
                 return "Error saving file"
+            
+            # --- SHADOW SNAPSHOT ---
+            try:
+                from src.core.runtime.shadow_workspace import ShadowWorkspace
+                ShadowWorkspace.get_instance().snapshot(str(file_path))
+            except Exception as e:
+                log_error(f"Shadow Snapshot failed: {e}")
+            # -----------------------
+
             log_debug(f"Saving contents to {file_path}")
             if not file_path.parent.exists():
                 file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +122,14 @@ class CrickCoderFileTools(Toolkit):
             
             if not file_path.parent.exists():
                 file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # --- SHADOW SNAPSHOT ---
+            try:
+                from src.core.runtime.shadow_workspace import ShadowWorkspace
+                ShadowWorkspace.get_instance().snapshot(str(file_path))
+            except Exception as e:
+                log_error(f"Shadow Snapshot failed: {e}")
+            # -----------------------
 
             with open(file_path, "a", encoding=encoding) as f:
                 f.write(contents)
@@ -149,6 +166,15 @@ class CrickCoderFileTools(Toolkit):
                 )
 
             new_content = content.replace(search_text, replace_text, 1)
+
+            # --- SHADOW SNAPSHOT ---
+            try:
+                from src.core.runtime.shadow_workspace import ShadowWorkspace
+                ShadowWorkspace.get_instance().snapshot(str(file_path))
+            except Exception as e:
+                log_error(f"Shadow Snapshot failed: {e}")
+            # -----------------------
+
             file_path.write_text(new_content, encoding=encoding)
             
             log_debug(f"Successfully patched {file_name}")

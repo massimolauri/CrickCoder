@@ -76,7 +76,7 @@ class ProjectWatcher(FileSystemEventHandler):
             if clean: clean_dirs.add(clean)
             
         self.ignore_dirs = list(clean_dirs)
-        logger.info(f"👀  Watcher attivo su: {os.path.basename(self.root_dir)}")
+        logger.info(f"Watcher attivo su: {os.path.basename(self.root_dir)}")
 
     def _should_ignore(self, path):
         """Determina se un file deve essere processato o ignorato."""
@@ -99,7 +99,7 @@ class ProjectWatcher(FileSystemEventHandler):
 
         # 2. Gestione dinamica ignore file
         if filename == ".crickignore":
-             logger.info("🔄  Ricarico regole ignore...")
+             logger.info("Ricarico regole ignore...")
              self._reload_ignore_rules()
              return True 
 
@@ -159,17 +159,17 @@ class ProjectWatcher(FileSystemEventHandler):
 
         with self.db_lock:
             try:
-                logger.info(f"🚚 Rilevato spostamento: {os.path.basename(src_path)} -> {os.path.basename(dest_path)}")
+                logger.info(f"Rilevato spostamento: {os.path.basename(src_path)} -> {os.path.basename(dest_path)}")
                 
                 # 1. Cancella vecchio (se non era ignorato)
                 if not ignore_src:
                     self.indexer.delete_file(src_path, self.root_dir, verbose=False)
-                    logger.info(f"   ↳ 🗑️  Vecchio rimosso.")
+                    logger.info(f"   ↳ Vecchio rimosso.")
 
                 # 2. Inserisci nuovo (se non è ignorato)
                 if not ignore_dest:
                     self.indexer.upsert_file(dest_path, self.root_dir, verbose=False)
-                    logger.info(f"   ↳ ✨ Nuovo indicizzato.")
+                    logger.info(f"   ↳ Nuovo indicizzato.")
             except Exception as e:
                 logger.error(f"❌ Errore Watcher Move: {e}", exc_info=True)
                 
@@ -203,29 +203,29 @@ class ProjectWatcher(FileSystemEventHandler):
 
             # 4. Scrittura Atomica (Thread-Safe)
             with self.db_lock:
-                logger.info(f"⚡ Rilevata modifica: {os.path.basename(path)}")
+                logger.info(f"Rilevata modifica: {os.path.basename(path)}")
                 # Chiama l'upsert intelligente (che deciderà se fare chunking o no)
                 self.indexer.upsert_file(path, self.root_dir, verbose=True)
 
         except Exception as e:
-            logger.error(f"❌ Errore Watcher Upsert: {e}", exc_info=True)
+            logger.error(f"Errore Watcher Upsert: {e}", exc_info=True)
 
     def _run_delete(self, path):
         """Gestisce la cancellazione sicura."""
         with self.db_lock:
             try:
-                logger.info(f"🗑️  Rilevata cancellazione: {os.path.basename(path)}")
+                logger.info(f"Rilevata cancellazione: {os.path.basename(path)}")
                 self.indexer.delete_file(path, self.root_dir, verbose=True)
             except Exception as e:
-                logger.error(f"❌ Errore Watcher Delete: {e}", exc_info=True)
+                logger.error(f"Errore Watcher Delete: {e}", exc_info=True)
 
 def start_watcher(indexer, root_dir):
     """Avvia il processo di monitoraggio."""
     if not os.path.exists(root_dir):
-        logger.error(f"❌ Errore: La directory {root_dir} non esiste.")
+        logger.error(f"Errore: La directory {root_dir} non esiste.")
         return None
 
-    logger.info(f"🚀 Avvio Watcher su: {root_dir}")
+    logger.info(f"Avvio Watcher su: {root_dir}")
     logger.info("   (Premi Ctrl+C per fermare)")
     
     event_handler = ProjectWatcher(indexer, root_dir)

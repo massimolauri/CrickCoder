@@ -157,6 +157,29 @@ Unlike generic AI coding assistants, Crick provides **real-time codebase awarene
 
 3. **Open your browser** and navigate to `http://localhost:5173`
 
+## Packaging (Standalone Executable)
+
+To build the application as a standalone desktop app (Windows .exe):
+
+1. **Clean & Build Python Server**
+   This script creates a clean virtual environment, installs dependencies, and runs PyInstaller.
+   ```bash
+   # From project root
+   python build_server_clean.py
+   ```
+   *Output: `server-dist/server/server.exe`*
+
+2. **Build Electron App**
+   Package the Electron frontend and bundle the Python server.
+   ```bash
+   cd crick-ui
+   npm run electron:build
+   ```
+   *Output: `crick-ui/dist/CrickCoder Setup <version>.exe`*
+
+3. **Install/Run**
+   Distribute the generated `.exe` installer. The application uses `~/.crickcoder` for persistent user data.
+
 ## Configuration
 
 ### LLM Provider Settings

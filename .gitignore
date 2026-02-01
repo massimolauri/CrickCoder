@@ -18,6 +18,7 @@ yarn-error.log*
 pnpm-debug.log*
 crick-ui/dist/
 crick-ui/node_modules/*
+crick-ui/release/*
 
 # OS
 .DS_Store
@@ -35,3 +36,10 @@ test_template_run/
 verify_template.py
 test_server.py
 *.zip
+
+
+# PyInstaller Build Artifacts
+build/
+build_venv/
+server-dist/
+release/

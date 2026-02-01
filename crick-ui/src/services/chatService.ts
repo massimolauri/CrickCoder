@@ -14,14 +14,26 @@ export interface SendMessageOptions {
   signal?: AbortSignal;
 }
 
-/**
- * Servizio per la chat con streaming SSE
- */
+// Extend global Window interface
+declare global {
+  interface Window {
+    CRICK_CONFIG?: {
+      apiUrl: string;
+    };
+  }
+}
+
 export class ChatService {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:8000') {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string) {
+    if (baseUrl) {
+      this.baseUrl = baseUrl;
+    } else if (typeof window !== 'undefined' && window.CRICK_CONFIG?.apiUrl) {
+      this.baseUrl = window.CRICK_CONFIG.apiUrl;
+    } else {
+      this.baseUrl = 'http://localhost:8000';
+    }
   }
 
   /**
@@ -122,6 +134,77 @@ export class ChatService {
   }
 
   /**
+   * Esegue l'undo delle modifiche di un run specifico
+   */
+  async undoRun(runId: string, sessionId: string, projectPath: string, files?: string[]): Promise<void> {
+    const params = new URLSearchParams({
+      session_id: sessionId,
+      project_path: projectPath
+    });
+
+    // If files are provided, send them in body
+    const options: RequestInit = {
+      method: 'POST'
+    };
+
+    if (files && files.length > 0) {
+      options.headers = { 'Content-Type': 'application/json' };
+      options.body = JSON.stringify({ files });
+    }
+
+    const response = await fetch(`${this.baseUrl}/api/runs/${runId}/undo?${params.toString()}`, options);
+
+    if (!response.ok) {
+      throw new Error(`Undo failed: ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Ottiene la lista dei file modificati in un run
+   */
+  async getRunFiles(runId: string, sessionId: string, projectPath: string): Promise<string[]> {
+    const params = new URLSearchParams({
+      session_id: sessionId,
+      project_path: projectPath
+    });
+
+    const response = await fetch(`${this.baseUrl}/api/runs/${runId}/files?${params.toString()}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to load modified files: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.files || [];
+  }
+
+  /**
+   * Ottiene i diff per una lista di file
+   */
+  async getDiffs(files: string[], runId: string, sessionId: string, projectPath: string): Promise<Record<string, string>> {
+    const params = new URLSearchParams({
+      run_id: runId,
+      session_id: sessionId,
+      project_path: projectPath
+    });
+
+    const response = await fetch(`${this.baseUrl}/api/files/diff?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(files)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to load diffs: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.diffs || {};
+  }
+
+  // ... existing private methods ...
+
+  /**
    * Processa uno stream SSE
    */
   private async processSSEStream(
@@ -213,6 +296,13 @@ export class ChatService {
 
       // Mappa tipo evento al tipo TypeScript corrispondente
       switch (parsed.type) {
+        case 'meta':
+          return {
+            type: 'meta',
+            shadow_run_id: parsed.shadow_run_id,
+            agent: parsed.agent || 'System'
+          };
+
         case 'content':
           if (typeof parsed.content !== 'string' || typeof parsed.agent !== 'string') {
             throw new Error('Invalid content event');
@@ -223,6 +313,7 @@ export class ChatService {
             agent: parsed.agent,
           };
 
+        // ... other cases unchanged ...
         case 'tool_start':
           if (typeof parsed.tool !== 'string' || typeof parsed.agent !== 'string') {
             throw new Error('Invalid tool_start event');

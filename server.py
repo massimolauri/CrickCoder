@@ -21,9 +21,12 @@ from src.models import ChatRequest, ContinueRequest, LLMSettings
 from src.core.runtime.manager import VibingManager
 from src.core.runtime.streamer import event_stream_generator
 from src.core.runtime.monitor import codebase_registry
+from pydantic import BaseModel
 from src.core.storage.storage import generate_session_id, list_sessions_with_summary, delete_session, get_session_with_runs
 from src.core.indexing.template_indexer import TemplateIndexer
 from src.core.runtime.server_utils import transform_runs_to_messages, normalize_path
+from src.core.runtime.shadow_workspace import ShadowWorkspace
+import difflib
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -35,10 +38,52 @@ logger = logging.getLogger("CrickCoderAPI")
 # --- SERVER ROOT ---
 SERVER_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+# --- GLOBAL USER ROOT (.crickcoder) ---
+GLOBAL_CRICK_DIR = os.path.join(os.path.expanduser("~"), ".crickcoder")
+
+# --- Bootstrap Function ---
+def bootstrap_environment():
+    """Bootstraps the global user environment from bundled assets."""
+    logger.info(f"Checking Global Environment at: {GLOBAL_CRICK_DIR}")
+    
+    # 1. Base Directories
+    global_public = os.path.join(GLOBAL_CRICK_DIR, "public", "templates")
+    global_kb = os.path.join(GLOBAL_CRICK_DIR, "knowledge_base", "templates_db")
+    
+    os.makedirs(global_public, exist_ok=True)
+    os.makedirs(os.path.dirname(global_kb), exist_ok=True)
+
+    # 2. Copy Bundled Templates (Asset Source)
+    bundled_public = os.path.join(SERVER_ROOT, "public", "templates")
+    if os.path.exists(bundled_public):
+        # We copy if global is empty to seed it
+        try:
+            # We copy if listdir is empty? Or just merge/overwrite existing system ones?
+            # Safer to merge (dirs_exist_ok=True) so we update system templates on app update.
+            # But we don't want to overwrite USER changes? 
+            # For now, let's just ensure they exist.
+            if not os.listdir(global_public):
+                shutil.copytree(bundled_public, global_public, dirs_exist_ok=True)
+                logger.info("📦 Bootstrapped Bundled Templates to Global Dir")
+        except Exception as e:
+            logger.error(f"Failed to bootstrap templates: {e}")
+
+    # 3. Copy Bundled Knowledge Base (DB)
+    bundled_kb = os.path.join(SERVER_ROOT, "knowledge_base", "templates_db")
+    if os.path.exists(bundled_kb):
+        if not os.path.exists(global_kb):
+            try:
+                shutil.copytree(bundled_kb, global_kb)
+                logger.info("📦 Bootstrapped Knowledge Base to Global Dir")
+            except Exception as e:
+                logger.error(f"Failed to bootstrap Knowledge Base: {e}")
+
+
 # --- Lifespan Manager ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Server is ready
+    # Startup: Bootstrap & Ready
+    bootstrap_environment()
     logger.info("🚀 Crick Coder API Ready.")
     yield
     # Shutdown: Clean up all active file watchers to free resources
@@ -55,11 +100,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure public directory exists
-os.makedirs(os.path.join(SERVER_ROOT, "public", "templates"), exist_ok=True)
+# Ensure global public directory exists
+os.makedirs(os.path.join(GLOBAL_CRICK_DIR, "public"), exist_ok=True)
 
-# Mount Static Files for Templates
-app.mount("/public", StaticFiles(directory=os.path.join(SERVER_ROOT, "public")), name="public")
+# Mount Static Files from GLOBAL PUBLIC to support user templates
+app.mount("/public", StaticFiles(directory=os.path.join(GLOBAL_CRICK_DIR, "public")), name="public")
 
 @app.get("/api/project/brain/{filename}")
 async def get_brain_file(filename: str, project_path: Optional[str] = Query(None), session_id: Optional[str] = Query(None)):
@@ -127,6 +172,147 @@ async def clear_brain_task_file(
 
     except Exception as e:
         logger.error(f"Clear Task Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- UNDO / FILE API ---
+
+class UndoRequest(BaseModel):
+    files: Optional[List[str]] = None
+
+@app.post("/api/runs/{run_id}/undo")
+async def undo_run_changes(
+    run_id: str,
+    session_id: str = Query(...),
+    project_path: str = Query(...),
+    body: UndoRequest = None # Optional body
+):
+    try:
+        project_root = normalize_path(project_path=project_path)
+        
+        target_files = body.files if body else None
+
+        # Esegui Rollback
+        success = ShadowWorkspace.get_instance().rollback(
+            project_root=project_root,
+            session_id=session_id,
+            run_id=run_id,
+            target_files=target_files
+        )
+        
+        if success:
+            msg = "Selected changes reverted" if target_files else f"Run {run_id} changes reverted."
+            return {"status": "success", "message": msg}
+        else:
+            return {"status": "ignored", "message": "No changes found to revert for this run."}
+
+    except Exception as e:
+        logger.error(f"Undo Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/runs/{run_id}/files")
+async def get_run_files(
+    run_id: str,
+    session_id: str = Query(...),
+    project_path: str = Query(...)
+):
+    try:
+        project_root = normalize_path(project_path=project_path)
+        
+        files = ShadowWorkspace.get_instance().get_run_changes(
+            project_root=project_root,
+            session_id=session_id,
+            run_id=run_id
+        )
+        
+        return {"files": files}
+
+    except Exception as e:
+        logger.error(f"Get Run Files Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files/content")
+async def get_file_content(path: str = Query(...), project_path: str = Query(...)):
+    """Reads a file from the project safely."""
+    try:
+        project_root = normalize_path(project_path=project_path)
+        abs_path = os.path.abspath(os.path.join(project_root, path))
+        
+        # Security check: ensure path is within project root
+        if not abs_path.startswith(os.path.abspath(project_root)):
+             raise HTTPException(status_code=403, detail="Access denied: File outside project root")
+             
+        if not os.path.exists(abs_path):
+             raise HTTPException(status_code=404, detail="File not found")
+             
+        with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+            
+        return {"content": content, "path": path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/files/diff")
+async def get_file_diff(
+    files: List[str], # List of relative paths
+    run_id: str = Query(...),
+    session_id: str = Query(...),
+    project_path: str = Query(...)
+):
+    """
+    Returns diffs for the specified files against their shadow backup for this run.
+    """
+    try:
+        project_root = normalize_path(project_path=project_path)
+        shadow_ws = ShadowWorkspace.get_instance()
+        # Ensure context is set for internal helper usage if needed, though we pass params explicitly usually
+        
+        diffs = {}
+        
+        for rel_path in files:
+            abs_path = os.path.join(project_root, rel_path)
+            
+            # 1. Get Current Content
+            current_content = ""
+            if os.path.exists(abs_path):
+                with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+                    current_content = f.read()
+            
+            # 2. Get Shadow Content
+            # Manually construct shadow path since ShadowWorkspace doesn't expose a 'read' method publicly
+            # but we can use private helper logic re-implemented or just add a helper method.
+            # Let's peek into the implementation detail for speed, or better, stick to the pattern:
+            # .crick/history/<session_id>/<run_id>/<rel_path>
+            shadow_path = os.path.join(project_root, ".crick", "history", session_id, run_id, rel_path)
+            
+            shadow_content = ""
+            if os.path.exists(shadow_path):
+                with open(shadow_path, "r", encoding="utf-8", errors="replace") as f:
+                    shadow_content = f.read()
+            else:
+                # If shadow doesn't exist, maybe it was a new file?
+                # If new file, shadow is empty (effectively).
+                pass
+
+            # 3. Generate Diff
+            if current_content == shadow_content:
+                continue
+
+            diff_gen = difflib.unified_diff(
+                shadow_content.splitlines(keepends=True),
+                current_content.splitlines(keepends=True),
+                fromfile=f"Original/{rel_path}",
+                tofile=f"Modified/{rel_path}"
+            )
+            diff_text = "".join(diff_gen)
+            
+            diffs[rel_path] = diff_text
+            
+        return {"diffs": diffs}
+
+    except Exception as e:
+        logger.error(f"Diff Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- ENDPOINTS ---
@@ -201,8 +387,8 @@ async def upload_template_zip(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid LLM Settings: {e}")
 
-        # Save ZIP temporarily
-        temp_dir = os.path.join(SERVER_ROOT, ".temp_upload")
+        # Save ZIP temporarily (Use Global Temp)
+        temp_dir = os.path.join(GLOBAL_CRICK_DIR, ".temp_upload")
         os.makedirs(temp_dir, exist_ok=True)
         temp_zip_path = os.path.join(temp_dir, file.filename)
         
@@ -210,9 +396,11 @@ async def upload_template_zip(
             shutil.copyfileobj(file.file, buffer)
 
         async def progress_generator():
-            # USE SERVER_ROOT for Global Storage
+            # USE GLOBAL DIRECTORY for Template Indexing
             # Pass parsed settings to Indexer for AI Analysis
-            indexer = TemplateIndexer(SERVER_ROOT, llm_settings=parsed_settings)
+            # Note: TemplateIndexer ignores project_root for global assets now, 
+            # but passing GLOBAL_CRICK_DIR is cleaner context.
+            indexer = TemplateIndexer(GLOBAL_CRICK_DIR, llm_settings=parsed_settings)
             
             try:
                 for event in indexer.process_template_zip(temp_zip_path):
@@ -238,9 +426,9 @@ def list_templates(project_path: str = None):
     Arg 'project_path' is ignored as templates are global.
     """
     try:
-        # USE SERVER_ROOT (Global)
-        db_path = os.path.join(SERVER_ROOT, "knowledge_base", "templates_db")
-        public_templates = os.path.join(SERVER_ROOT, "public", "templates")
+        # USE GLOBAL_CRICK_DIR (User Data)
+        db_path = os.path.join(GLOBAL_CRICK_DIR, "knowledge_base", "templates_db")
+        public_templates = os.path.join(GLOBAL_CRICK_DIR, "public", "templates")
         
         templates = []
         
@@ -300,14 +488,14 @@ def delete_template(template_id: str):
     2. Drops the table from LanceDB.
     """
     try:
-        # 1. Delete Public Files
-        public_dir = os.path.join(SERVER_ROOT, "public", "templates", template_id)
+        # 1. Delete Public Files (Global)
+        public_dir = os.path.join(GLOBAL_CRICK_DIR, "public", "templates", template_id)
         if os.path.exists(public_dir):
             shutil.rmtree(public_dir)
             logger.info(f"Deleted public assets for {template_id}")
 
-        # 2. Delete from DB
-        db_path = os.path.join(SERVER_ROOT, "knowledge_base", "templates_db")
+        # 2. Delete from DB (Global)
+        db_path = os.path.join(GLOBAL_CRICK_DIR, "knowledge_base", "templates_db")
         if os.path.exists(db_path):
             try:
                 db = lancedb.connect(db_path)
@@ -393,5 +581,26 @@ def get_agents():
     return {"agents": ["ARCHITECT", "PLANNER", "CODER"]}
 
 if __name__ == "__main__":
-    # Reload=True allows hot-reloading during development
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--reload", action="store_true", help="Enable hot reloading")
+    args = parser.parse_args()
+
+    # Disable reload in production/standalone mode if not explicitly requested
+    # But for dev keep it.
+    import sys
+    
+    # Check if running in frozen mode (PyInstaller)
+    is_frozen = getattr(sys, 'frozen', False)
+
+    if is_frozen:
+        # In frozen mode, passing the string "server:app" fails because uvicorn 
+        # tries to import "server" which doesn't exist as a file.
+        # We must pass the app object directly. Reload is not supported in frozen mode.
+        # We also disable workers logic if any, just run simple.
+        uvicorn.run(app, host=args.host, port=args.port, reload=False)
+    else:
+        # In dev mode, use string to enable hot reload
+        uvicorn.run("server:app", host=args.host, port=args.port, reload=args.reload)

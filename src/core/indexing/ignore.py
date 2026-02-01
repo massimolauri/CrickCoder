@@ -45,7 +45,6 @@ def load_crickignore_rules(project_root: str) -> Tuple[Set[str], Set[str], Set[s
             elif '.' in line and not line.startswith('.'):
                 # Potrebbe essere un file specifico
                 ignore_exts.add(f".{line.split('.')[-1]}")
-            # Directory che iniziano con punto
             elif line.startswith('.'):
                 ignore_dirs.add(line)
 

@@ -14,6 +14,14 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+declare global {
+  interface Window {
+    CRICK_CONFIG?: {
+      apiUrl: string;
+    };
+  }
+}
+
 /**
  * Client HTTP base per le API Crick
  * Gestisce errori, timeout e pulizia automatica dei path
@@ -164,7 +172,23 @@ export class ApiClient {
 }
 
 /** Istanza globale del client API */
-export const API_BASE_URL = 'http://localhost:8000/api';
+/** Istanza globale del client API */
+
+export const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.CRICK_CONFIG?.apiUrl) {
+    return `${window.CRICK_CONFIG.apiUrl}/api`;
+  }
+  return 'http://localhost:8000/api';
+};
+
+export const getBackendUrl = () => {
+  if (typeof window !== 'undefined' && window.CRICK_CONFIG?.apiUrl) {
+    return window.CRICK_CONFIG.apiUrl;
+  }
+  return 'http://localhost:8000';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 export const apiClient = new ApiClient({
   baseUrl: API_BASE_URL,
   timeout: 60000, // Timeout lungo per stream SSE

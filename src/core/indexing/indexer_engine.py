@@ -246,17 +246,17 @@ class UniversalCodeIndexer:
         db_state = self._get_db_state() 
 
         # DEBUG: Stato generale
-        print(f"📊 [DEBUG STATS] Files su Disco: {len(disk_files)} | Files nel DB: {len(db_state)}")
+        print(f"[DEBUG STATS] Files su Disco: {len(disk_files)} | Files nel DB: {len(db_state)}")
 
         to_upsert = []
         to_delete = []
 
         # 2. Rileva modifiche (Nuovi file o Hash cambiati)
-        print("🔍 [DEBUG CHECK] Analisi differenze...")
+        print("[DEBUG CHECK] Analisi differenze...")
         for path, disk_hash in disk_files.items():
             # CASO A: Il file non è nel DB (Nuovo)
             if path not in db_state:
-                print(f"   ➕ [NEW] {path}")
+                print(f"   [NEW] {path}")
                 to_upsert.append(path)
             
             # CASO B: C'è ma l'hash è diverso (Modificato)
@@ -270,12 +270,12 @@ class UniversalCodeIndexer:
         # 3. Rileva cancellazioni
         for path in db_state:
             if path not in disk_files:
-                print(f"   🗑️ [DEL] {path}")
+                print(f"   [DEL] {path}")
                 to_delete.append(path)
 
         # 4. Esecuzione
         if not to_upsert and not to_delete:
-            print("[SYNC] ✅ Nessun cambiamento. DB aggiornato.")
+            print("[SYNC] Nessun cambiamento. DB aggiornato.")
             return
 
         print(f"[SYNC] Rilevati: +{len(to_upsert)} Upsert, -{len(to_delete)} Delete.")
@@ -304,9 +304,9 @@ class UniversalCodeIndexer:
         
         # 1. Carichiamo sia directory CHE estensioni
         try: 
-            ignore_dirs, ignore_exts, _ = load_crickignore_rules(root_dir)
+            ignore_dirs, ignore_exts, ignore_patterns = load_crickignore_rules(root_dir)
         except: 
-            ignore_dirs, ignore_exts = [], []
+            ignore_dirs, ignore_exts, ignore_patterns = set(), set(), set()
         
         # Carica .gitignore per regole extra
         ignore_spec = None

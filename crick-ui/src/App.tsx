@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Menu, ChevronRight, Settings, Folder, LayoutTemplate, Moon, Sun
+  Menu, ChevronRight, Settings, Folder, LayoutTemplate, Moon, Sun, Loader2, ExternalLink
 } from 'lucide-react';
 
 // Import servizi e hook
 import { useChat } from '@/hooks/useChat';
+import { chatService } from '@/services/chatService';
 import { useHealth } from '@/hooks/useHealth';
 import { sessionService } from '@/services/sessionService';
 import { projectStorage, llmSettingsStorage, type LLMSettings } from '@/utils/storage';
@@ -18,6 +19,7 @@ import TodoCard from '@/components/TodoCard';
 import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/chat/ChatInput';
 import { renderTimelineItem } from '@/components/chat/renderTimelineItem';
+import ReviewModal from '@/components/chat/ReviewModal';
 
 
 // --- THEME CONFIGURATION ---
@@ -146,6 +148,15 @@ export default function CrickInterface() {
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Listen for Menu "Open Folder" events from Electron
+  useEffect(() => {
+    if ((window as any).electronAPI?.onMenuOpenFolder) {
+      (window as any).electronAPI.onMenuOpenFolder((path: string) => {
+        if (path) setProjectPath(path);
+      });
+    }
+  }, []);
+
 
   // Salva projectPath quando cambia
   useEffect(() => {
@@ -198,6 +209,8 @@ export default function CrickInterface() {
     showSessionSelectionBadge(newSessionId, true);
   };
 
+  const [reviewRunId, setReviewRunId] = useState<string | null>(null);
+
   // Manual scroll to bottom
   const scrollToBottom = () => {
     userHasScrolledRef.current = false;
@@ -213,7 +226,51 @@ export default function CrickInterface() {
     }, 300);
   };
 
+  // Open Review Modal
+  const handleUndo = useCallback((runId: string) => {
+    setReviewRunId(runId);
+  }, []);
 
+  // Execute Rejection (Undo)
+  const handleRejectFiles = useCallback(async (files: string[]) => {
+    if (!projectPath || !chat.currentSessionId || !reviewRunId) return;
+
+    try {
+      // If files is empty, it means user selected nothing, but typically this function won't be called then.
+      // If files has items, we assume user wants to REJECT them (Rollback).
+
+      await chatService.undoRun(reviewRunId, chat.currentSessionId, projectPath, files);
+
+      alert(`Successfully reverted changes in ${files.length} file(s).`);
+      setReviewRunId(null); // Close modal
+
+    } catch (e) {
+      console.error(e);
+      alert("Failed to revert changes.");
+    }
+  }, [projectPath, chat.currentSessionId, reviewRunId]);
+
+
+
+  // Initial Loading Screen
+  if (health.status === 'checking' && !health.lastSuccess && !health.isOffline) {
+    return (
+      <div className={`flex h-screen w-full ${THEME.bg} items-center justify-center flex-col gap-6`}>
+        <div className="relative">
+          <div className="w-16 h-16 rounded-full border-4 border-crick-accent/30 animate-pulse absolute inset-0" />
+          <Loader2 className="w-16 h-16 text-crick-accent animate-spin relative z-10" />
+        </div>
+        <div className="text-center space-y-2 animate-in fade-in duration-700 slide-in-from-bottom-4">
+          <h2 className="text-2xl font-bold text-crick-text-primary">
+            Crick<span className="text-crick-accent">Coder</span>
+          </h2>
+          <p className="text-crick-text-secondary font-mono text-xs tracking-wider uppercase">
+            Initializing Runtime Environment...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex h-screen w-full ${THEME.bg} text-crick-text-primary font-sans overflow-hidden selection:bg-crick-accent/30 selection:text-crick-accent`}>
@@ -265,17 +322,35 @@ export default function CrickInterface() {
       </div>
 
       {/* Sessions sidebar */}
-      {showSessions && projectPath && (
-        <div className={`w-80 ${THEME.sidebar} border-r border-gray-100 flex flex-col py-6 overflow-y-auto z-10 glass-panel`}>
-          <SessionList
-            projectPath={projectPath}
-            selectedSessionId={chat.currentSessionId}
-            onSelectSession={(sessionId) => {
-              chat.switchSession(sessionId);
-              showSessionSelectionBadge(sessionId, false);
-            }}
-            onNewSession={handleNewSession}
-          />
+      {showSessions && (
+        <div className={`w-80 relative shrink-0 ${THEME.sidebar} border-r border-gray-100 flex flex-col py-6 overflow-y-auto z-10 glass-panel transition-all duration-300 ease-in-out`}>
+          {projectPath ? (
+            <SessionList
+              projectPath={projectPath}
+              selectedSessionId={chat.currentSessionId}
+              onSelectSession={(sessionId) => {
+                chat.switchSession(sessionId);
+                showSessionSelectionBadge(sessionId, false);
+              }}
+              onNewSession={handleNewSession}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full px-6 text-center text-gray-400 animate-in fade-in zoom-in-95 duration-500">
+              <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-full mb-4">
+                <Folder size={32} className="opacity-40" />
+              </div>
+              <p className="text-sm font-medium mb-2 text-crick-text-primary">No Project Selected</p>
+              <p className="text-xs opacity-70 mb-6 leading-relaxed">
+                Connect a local project folder to start creating sessions and tasks.
+              </p>
+              <button
+                onClick={() => { setShowSettings(true); setShowSessions(false); }}
+                className="px-5 py-2.5 bg-crick-accent hover:bg-blue-600 text-white text-xs font-bold rounded-full transition-all shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5"
+              >
+                CONFIGURE PROJECT
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -289,8 +364,19 @@ export default function CrickInterface() {
                 crick<span className="text-crick-accent">coder</span>
               </span>
             </div>
-            <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#3e3e42]">
-              <Folder size={12} className="text-gray-400" /> {projectPath ? (projectPath.length > 50 ? '...' + projectPath.slice(-50) : projectPath) : 'NO PROJECT LINKED'}
+            <div className="hidden md:flex items-center gap-2">
+              <div className="flex items-center gap-2 text-[11px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#3e3e42]">
+                <Folder size={12} className="text-gray-400" /> {projectPath ? (projectPath.length > 50 ? '...' + projectPath.slice(-50) : projectPath) : 'NO PROJECT LINKED'}
+              </div>
+              {projectPath && (window as any).electronAPI && (
+                <button
+                  onClick={() => (window as any).electronAPI.openExternal(projectPath)}
+                  className="p-1.5 text-gray-400 hover:text-crick-accent hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                  title="Open in File Explorer"
+                >
+                  <ExternalLink size={14} />
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -313,6 +399,18 @@ export default function CrickInterface() {
                     className="flex-1 bg-crick-surface border border-gray-200 dark:border-[#3e3e42] rounded-full px-4 py-2 text-sm font-mono text-crick-text-primary outline-none focus:border-crick-accent transition-colors pl-4"
                     placeholder="e.g. C:/Dev/MyProject"
                   />
+                  {(window as any).electronAPI && (
+                    <button
+                      onClick={async () => {
+                        const path = await (window as any).electronAPI.selectFolder();
+                        if (path) setProjectPath(path);
+                      }}
+                      className="px-4 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-[#3e3e42] hover:bg-gray-200 dark:hover:bg-white/10 rounded-full text-xs font-bold text-gray-600 dark:text-gray-300 transition-colors tracking-wide"
+                      title="Select Folder"
+                    >
+                      BROWSE
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -427,6 +525,7 @@ export default function CrickInterface() {
                   streaming={chat.streaming}
                   lastMessageId={chat.lastMessage?.id}
                   renderTimelineItem={renderTimelineItem}
+                  onUndo={handleUndo}
                 />
                 <div ref={bottomRef} className="h-4" />
 
@@ -537,6 +636,17 @@ export default function CrickInterface() {
 
       {/* Floating Todo Card */}
       <TodoCard projectPath={projectPath} sessionId={chat.currentSessionId} />
+
+      {/* Review Changes Modal */}
+      {reviewRunId && chat.currentSessionId && projectPath && (
+        <ReviewModal
+          runId={reviewRunId}
+          sessionId={chat.currentSessionId}
+          projectPath={projectPath}
+          onClose={() => setReviewRunId(null)}
+          onReject={handleRejectFiles}
+        />
+      )}
     </div>
   );
 }

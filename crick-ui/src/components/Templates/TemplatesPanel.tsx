@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Upload, X, LayoutTemplate, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { useChat } from '../../hooks/useChat';
 import { templateService } from '../../services/templateService';
+import { getApiBaseUrl, getBackendUrl } from '../../services/apiClient';
 
 interface Template {
     id: string;
@@ -62,7 +63,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
         if (!confirm('Sei sicuro di voler eliminare questo template?')) return;
 
         try {
-            const res = await fetch(`/api/templates/${templateId}`, {
+            const res = await fetch(`${getApiBaseUrl()}/templates/${templateId}`, {
                 method: 'DELETE',
             });
             const data = await res.json();
@@ -109,7 +110,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
 
         // SSE connection via fetch is tricky, but we can use basic fetch and read the stream
         try {
-            const response = await fetch('/api/templates/upload', {
+            const response = await fetch(`${getApiBaseUrl()}/templates/upload`, {
                 method: 'POST',
                 body: formData,
             });
@@ -266,7 +267,7 @@ export default function TemplatesPanel({ onClose, projectPath }: TemplatesPanelP
                                     <div className="aspect-video bg-gray-50 dark:bg-[#2d2d2d] relative overflow-hidden border-b border-gray-100 dark:border-[#3e3e42] group-hover:opacity-100 transition-opacity">
                                         {tpl.preview_url ? (
                                             <img
-                                                src={tpl.preview_url}
+                                                src={tpl.preview_url?.startsWith('http') ? tpl.preview_url : `${getBackendUrl()}${tpl.preview_url}`}
                                                 alt={tpl.name}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {

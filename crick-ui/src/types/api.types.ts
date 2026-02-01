@@ -92,7 +92,14 @@ export interface TemplatesResponse {
 // ==================== SSE EVENTS ====================
 
 /** Tipo base evento SSE */
-export type ChatEventType = 'content' | 'tool_start' | 'tool_end' | 'error' | 'paused';
+export type ChatEventType = 'content' | 'tool_start' | 'tool_end' | 'error' | 'paused' | 'meta';
+
+/** Evento metadati (es. shadow_run_id) */
+export interface MetaEvent {
+  type: 'meta';
+  shadow_run_id: string;
+  agent: string;
+}
 
 /** Evento contenuto testuale */
 export interface ContentEvent {
@@ -132,7 +139,7 @@ export interface PausedEvent {
 }
 
 /** Unione di tutti i tipi di evento chat */
-export type ChatEvent = ContentEvent | ToolStartEvent | ToolEndEvent | ErrorEvent | PausedEvent;
+export type ChatEvent = ContentEvent | ToolStartEvent | ToolEndEvent | ErrorEvent | PausedEvent | MetaEvent;
 
 /** Callback per eventi SSE */
 export type EventCallback = (event: ChatEvent) => void;
@@ -167,6 +174,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content?: string;
   timeline?: TimelineItem[];
+  shadowRunId?: string; // ID univoco per funzionalità Undo/Reject
 }
 
 /** Elemento timeline */

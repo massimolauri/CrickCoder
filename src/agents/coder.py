@@ -45,7 +45,8 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
     shell_tools = CrickCoderShellTools(
         base_dir=Path(project_root),
         timeout_seconds=120,
-        enable_confirmation=enable_tool_confirmation
+        enable_confirmation=enable_tool_confirmation,
+        session_id=session_id
     )
     
     # Base tools list

@@ -6,6 +6,7 @@ import {
     CheckCircle2, Circle, Timer, Trash2, Maximize2
 } from 'lucide-react';
 import KanbanBoard from './KanbanBoard';
+import { getApiBaseUrl } from '../services/apiClient';
 
 interface TodoCardProps {
     projectPath: string;
@@ -25,7 +26,7 @@ export default function TodoCard({ projectPath, sessionId }: TodoCardProps) {
         console.log("Fetching tasks for project:", projectPath, "Session:", sessionId);
         setLoading(true);
         try {
-            const response = await fetch(`/api/project/brain/task.md?project_path=${encodeURIComponent(projectPath)}&session_id=${encodeURIComponent(sessionId)}&t=${Date.now()}`);
+            const response = await fetch(`${getApiBaseUrl()}/project/brain/task.md?project_path=${encodeURIComponent(projectPath)}&session_id=${encodeURIComponent(sessionId)}&t=${Date.now()}`);
             const data = await response.json();
 
             if (data.error) {
