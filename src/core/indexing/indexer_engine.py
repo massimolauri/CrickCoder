@@ -122,7 +122,7 @@ class UniversalCodeIndexer:
                 if file_len < self.SMALL_FILE_THRESHOLD:
                     # File piccolo -> 1 Chunk unico
                     docs = [Document(page_content=content)]
-                    if verbose: print(f"⚡ [UPSERT] {rel_path} (Intero: {file_len} chars)")
+                    if verbose: print(f">> [UPSERT] {rel_path} (Intero: {file_len} chars)")
                 else:
                     # File grande -> Split Intelligente
                     splitter = self._get_splitter(rel_path)
@@ -130,7 +130,7 @@ class UniversalCodeIndexer:
                         docs = splitter.create_documents([content])
                     except Exception: 
                         docs = self.fallback_splitter.create_documents([content])
-                    if verbose: print(f"⚡ [UPSERT] {rel_path} (Chunked: {len(docs)} parts)")
+                    if verbose: print(f">> [UPSERT] {rel_path} (Chunked: {len(docs)} parts)")
 
                 # 6. Pulizia Preventiva (Cruciale per evitare chunk orfani)
                 # Se prima il file aveva 5 chunk e ora ne ha 3, dobbiamo rimuovere i vecchi 5.
@@ -167,7 +167,7 @@ class UniversalCodeIndexer:
                     self.knowledge.add_contents(contents_to_add)
 
             except Exception as e:
-              print(f"❌ [ERROR] {rel_path if 'rel_path' in locals() else full_path}: {e}")
+              print(f"[ERROR] {rel_path if 'rel_path' in locals() else full_path}: {e}")
 
     def delete_file(self, full_path: str, root_dir: str, verbose=True):
         """Cancella tutti i chunk associati a un file usando i metadati."""
@@ -186,10 +186,10 @@ class UniversalCodeIndexer:
             success = self.vector_db.delete_by_metadata({"path": rel_path})
             
             if verbose and success: 
-                print(f"🗑️  [DELETE] {rel_path}")
+                print(f"[DELETE] {rel_path}")
         except Exception as e:
             if "Table not initialized" in str(e): return
-            print(f"❌ [DELETE ERROR] {e}")
+            print(f"[DELETE ERROR] {e}")
 
     # ==========================================
     # 2. INDICI & SYNC
@@ -205,16 +205,16 @@ class UniversalCodeIndexer:
             # Accesso diretto alla tabella sottostante mantenuta dalla classe LanceDb
             tbl = self.vector_db.table
             row_count = tbl.count_rows()
-            print(f"⚙️  Analisi DB: trovate {row_count} righe.")
+            print(f"[INFO]  Analisi DB: trovate {row_count} righe.")
 
             # Indice Testuale (FTS)
             # Nota: La tua classe salva tutto in "payload", Agno mette il contenuto lì dentro.
             try: 
                 tbl.create_fts_index("payload", use_tantivy=True, replace=True)
                 self.vector_db.fts_index_exists = True
-                print("✅ FTS Index aggiornato.")
+                print("[OK] FTS Index aggiornato.")
             except Exception as e: 
-                print(f"⚠️ FTS Skip: {e}")
+                print(f"[WARN] FTS Skip: {e}")
 
             # Indice Vettoriale (IVF-PQ)
             if row_count > 2000:
@@ -232,10 +232,10 @@ class UniversalCodeIndexer:
                     num_sub_vectors=96, 
                     replace=True
                 )
-                print("✅ Vector Index ottimizzato.")
+                print("[OK] Vector Index ottimizzato.")
             
         except Exception as e:
-            print(f"⚠️  Manutenzione indici fallita: {e}")
+            print(f"[WARN]  Manutenzione indici fallita: {e}")
 
     def sync_project(self, root_dir: str):
         """Scansiona la cartella e aggiorna il DB (CON DEBUG)."""
@@ -263,8 +263,8 @@ class UniversalCodeIndexer:
             elif db_state[path] != disk_hash:
                 db_hash = db_state[path]
                 # Stampa i primi 8 caratteri degli hash per confronto
-                print(f"   ✏️ [MOD] {path}")
-                print(f"       └─ DISK: {disk_hash[:8]}...  vs  DB: {db_hash[:8]}...")
+                print(f"   [MOD] {path}")
+                print(f"       -- DISK: {disk_hash[:8]}...  vs  DB: {db_hash[:8]}...")
                 to_upsert.append(path)
         
         # 3. Rileva cancellazioni
@@ -286,7 +286,7 @@ class UniversalCodeIndexer:
             
         # Esecuzione Inserimenti
         for i, p in enumerate(to_upsert, 1):
-            print(f"   ⏳ Processing [{i}/{len(to_upsert)}]: {p}", end="\r")
+            print(f"   >> Processing [{i}/{len(to_upsert)}]: {p}", end="\r")
             self.upsert_file(os.path.join(root_dir, p), root_dir, verbose=False)
             
         print("\n[SYNC] Completato.")
@@ -392,7 +392,7 @@ class UniversalCodeIndexer:
             return state
 
         except Exception as e:
-            print(f"❌ [DB READ ERROR] {e}")
+            print(f"[DB READ ERROR] {e}")
             return {}
 
     def _is_binary_file(self, filepath):
@@ -424,7 +424,7 @@ class UniversalCodeIndexer:
             
             return None
         except Exception as e:
-            print(f"⚠️ Errore recupero hash per {rel_path}: {e}")
+            print(f"[WARN] Errore recupero hash per {rel_path}: {e}")
             return None
 
     def search(self, query: str, limit: int = 5):
@@ -438,10 +438,10 @@ class UniversalCodeIndexer:
         Cancella completamente la tabella e la ricrea vuota.
         Utile per ripartire da zero.
         """
-        print(f"⚠️ RESET: Cancellazione tabella {self.table_name}...")
+        print(f"[WARN] RESET: Cancellazione tabella {self.table_name}...")
         self.vector_db.drop()
         self.vector_db.create()
-        print("✅ Database resettato.")
+        print("[OK] Database resettato.")
     def _compute_content_hash(self, content: str) -> str:
         """
         Calcola SHA256 normalizzando i line-endings.

@@ -52,7 +52,7 @@ class ShellSession:
             threading.Thread(target=self._enqueue_output, args=(self.process.stdout, self.stdout_queue), daemon=True).start()
             threading.Thread(target=self._enqueue_output, args=(self.process.stderr, self.stderr_queue), daemon=True).start()
             
-            logger.info(f"🐚 Shell Session {self.session_id} started in {self.cwd}")
+            logger.info(f"[SHELL] Shell Session {self.session_id} started in {self.cwd}")
             
         except Exception as e:
             logger.error(f"Failed to start shell session: {e}")
@@ -67,7 +67,7 @@ class ShellSession:
     def write(self, command: str):
         """Writes a command to the shell's stdin."""
         if not self.is_active or not self.process:
-            return "❌ Error: Shell is not active."
+            return "[ERROR] Error: Shell is not active."
         
         try:
             if not command.endswith("\n"):
@@ -76,10 +76,10 @@ class ShellSession:
             self.process.stdin.write(command)
             self.process.stdin.flush()
             self.history.append(command.strip())
-            return "✅ Command sent."
+            return "[OK] Command sent."
         except Exception as e:
             logger.error(f"Error writing to shell: {e}")
-            return f"❌ Error: {str(e)}"
+            return f"[ERROR] Error: {str(e)}"
 
     def read(self, timeout_sec: float = 0.5) -> str:
         """Reads all currently available output from queues."""

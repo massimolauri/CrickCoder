@@ -63,7 +63,7 @@ class CrickCoderShellTools(Toolkit):
             timeout (int): Max time to wait for completion before assuming it's a long-running/interactive process (default to self.timeout).
         """
         actual_timeout = timeout if timeout is not None else self.timeout
-        logger.info(f"🐚 RUN (Smart Mode): {command} | Session: {self.session_id}")
+        logger.info(f"[SHELL] RUN (Smart Mode): {command} | Session: {self.session_id}")
 
         if not self.session_id:
             # Fallback for safe mode or no-session context (Legacy Blocking)
@@ -88,15 +88,15 @@ class CrickCoderShellTools(Toolkit):
         else:
             # Stopped due to Idle (Interactive Prompt?) or Total Timeout (Long running)
             return (
-                f"⚠️ COMMAND ACTIVE (Paused/Idle)\n"
+                f"[WARN] COMMAND ACTIVE (Paused/Idle)\n"
                 f"The command is still running but stopped producing output (likely waiting for input).\n"
                 f"--- OUTPUT SO FAR ---\n{output}\n"
-                f"👉 ACTION REQUIRED: If it's asking for input, use 'send_shell_input'. If it's just slow, use 'read_shell_output' to monitor."
+                f"-> ACTION REQUIRED: If it's asking for input, use 'send_shell_input'. If it's just slow, use 'read_shell_output' to monitor."
             )
 
     def _run_blocking_fallback(self, command: str, timeout: int) -> str:
         """Legacy blocking method for when no session_id is present."""
-        logger.info(f"🐚 RUN (Fallback): {command}")
+        logger.info(f"[SHELL] RUN (Fallback): {command}")
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if self.is_windows else 0
         start_new_session = not self.is_windows
         process = None
@@ -110,17 +110,17 @@ class CrickCoderShellTools(Toolkit):
             return self._format_output(stdout, stderr, process.returncode)
         except subprocess.TimeoutExpired as e:
             if process: self._kill_process_tree(process.pid)
-            return f"❌ TIMEOUT (>{timeout}s). Partial: {e.stdout}"
+            return f"[ERROR] TIMEOUT (>{timeout}s). Partial: {e.stdout}"
         except Exception as e:
             if process: self._kill_process_tree(process.pid)
-            return f"❌ SYSTEM ERROR: {str(e)}"
+            return f"[ERROR] SYSTEM ERROR: {str(e)}"
 
     def _format_output(self, stdout, stderr, exit_code):
         output_parts = []
         if stdout and stdout.strip(): output_parts.append(f"--- STDOUT ---\n{stdout.strip()}")
         if stderr and stderr.strip(): output_parts.append(f"--- STDERR ---\n{stderr.strip()}")
         full_output = "\n".join(output_parts) if output_parts else "(No output)"
-        return f"✅ SUCCESS (Exit Code 0)\n{full_output}" if exit_code == 0 else f"❌ FAILED (Exit Code {exit_code})\n{full_output}"
+        return f"[OK] SUCCESS (Exit Code 0)\n{full_output}" if exit_code == 0 else f"[FAILED] FAILED (Exit Code {exit_code})\n{full_output}"
 
     # --- Interactive / Persistent Session Tools ---
     def start_interactive_session(self, command: str) -> str:
@@ -132,7 +132,7 @@ class CrickCoderShellTools(Toolkit):
             command (str): The command to start.
         """
         if not self.session_id:
-            return "❌ Error: Tool not initialized with valid session_id."
+            return "[ERROR] Error: Tool not initialized with valid session_id."
 
         manager = ShellManager.get_instance()
         session = manager.get_or_create_session(self.session_id, str(self.base_dir))
@@ -159,10 +159,10 @@ class CrickCoderShellTools(Toolkit):
         Args:
             input_text (str): The text to send (newline is added automatically).
         """
-        if not self.session_id: return "❌ No Session ID."
+        if not self.session_id: return "[ERROR] No Session ID."
         manager = ShellManager.get_instance()
         session = manager.get_session(self.session_id)
-        if not session: return "❌ No active shell session found. Use 'start_interactive_session' first."
+        if not session: return "[ERROR] No active shell session found. Use 'start_interactive_session' first."
         
         res = session.write(input_text)
         return f"{res}\n(Call 'read_shell_output' to see response)"
@@ -174,16 +174,16 @@ class CrickCoderShellTools(Toolkit):
         Args:
             wait_seconds (float): How long to accumulate output before returning (default 1.0s).
         """
-        if not self.session_id: return "❌ No Session ID."
+        if not self.session_id: return "[ERROR] No Session ID."
         manager = ShellManager.get_instance()
         session = manager.get_session(self.session_id)
-        if not session: return "❌ No active shell session found."
+        if not session: return "[ERROR] No active shell session found."
         
         return session.read(timeout_sec=wait_seconds)
 
     def close_shell_session(self) -> str:
         """Kills the active interactive shell session."""
-        if not self.session_id: return "❌ No Session ID."
+        if not self.session_id: return "[ERROR] No Session ID."
         manager = ShellManager.get_instance()
         manager.close_session(self.session_id)
-        return "✅ Interactive session closed."
+        return "[OK] Interactive session closed."

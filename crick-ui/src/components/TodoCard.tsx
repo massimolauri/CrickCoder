@@ -163,7 +163,7 @@ export default function TodoCard({ projectPath, sessionId }: TodoCardProps) {
                                 if (!window.confirm("Are you sure you want to clear all tasks?")) return;
                                 try {
                                     setLoading(true);
-                                    await fetch(`/api/project/brain/task.md?project_path=${encodeURIComponent(projectPath)}&session_id=${encodeURIComponent(sessionId || '')}`, {
+                                    await fetch(`${getApiBaseUrl()}/project/brain/task.md?project_path=${encodeURIComponent(projectPath)}&session_id=${encodeURIComponent(sessionId || '')}`, {
                                         method: 'DELETE'
                                     });
                                     await fetchTasks();

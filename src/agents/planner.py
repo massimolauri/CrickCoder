@@ -28,7 +28,7 @@ def build_planner(project_root: str, session_id: str, auto_approval: bool = Fals
         ]
 
     if not llm_settings:
-        raise ValueError("llm_settings è obbligatorio per costruire l'agente Planner")
+        raise ValueError("llm_settings e' obbligatorio per costruire l'agente Planner")
 
     model = build_model_for_runtime(
         provider=llm_settings.provider,

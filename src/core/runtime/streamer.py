@@ -63,7 +63,7 @@ async def event_stream_generator(
                 # --- A. CHECK FOR PAUSED STATUS (From Final Object) ---
                 # We check if this event is the final output object and if it's paused.
                 if hasattr(event, "status") and event.status == RunStatus.paused:
-                    logger.info(f"⏸️ PAUSED STATE RECEIVED: {event.run_id}")
+                    logger.info(f"[PAUSED] PAUSED STATE RECEIVED: {event.run_id}")
 
                     current_run_id = event.run_id
 
@@ -147,7 +147,7 @@ async def event_stream_generator(
                 # Safe check using string conversion to avoid AttributeError if RunStatus.failed doesn't exist
                 if hasattr(event, "status") and str(event.status).lower().endswith("failed"):
                      error_msg = getattr(event, "response", "Unknown agent error")
-                     logger.error(f"❌ AGENT FAILED: {error_msg}")
+                     logger.error(f"[FAILED] AGENT FAILED: {error_msg}")
                      yield f"data: {json.dumps({'type': 'error', 'message': f'Agent Run Failed: {error_msg}'})}\n\n"
                      return
 
@@ -158,7 +158,7 @@ async def event_stream_generator(
             yield "data: [DONE]\n\n"
 
         except asyncio.CancelledError:
-            logger.warning("⚠️ Stream cancelled by client.")
+            logger.warning("[WARN] Stream cancelled by client.")
             if current_run_id and hasattr(executable_object, "cancel_run"):
                 try:
                     executable_object.cancel_run(current_run_id)
@@ -172,11 +172,11 @@ async def event_stream_generator(
             
             # Formatta errori comuni
             if "402" in error_str or "Insufficient Balance" in error_str:
-                user_msg = "⚠️ API Error 402: Insufficient Balance. Please check your LLM provider credits."
+                user_msg = "[WARN] API Error 402: Insufficient Balance. Please check your LLM provider credits."
             elif "401" in error_str:
-                 user_msg = "⚠️ API Error 401: Unauthorized. Please check your API Key."
+                 user_msg = "[WARN] API Error 401: Unauthorized. Please check your API Key."
             elif "429" in error_str:
-                 user_msg = "⚠️ API Error 429: Rate Limit Exceeded. Please try again later."
+                 user_msg = "[WARN] API Error 429: Rate Limit Exceeded. Please try again later."
             else:
                  user_msg = f"System Error: {error_str}"
 

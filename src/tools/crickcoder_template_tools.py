@@ -42,7 +42,7 @@ class CrickCoderTemplateTools(Toolkit):
                     shutil.copytree(bundled_db_path, self.db_path)
                     print(f"Bootstrapped System Templates to {self.db_path}")
                 except Exception as e:
-                    print(f"⚠️ Failed to copy system templates: {e}")
+                    print(f"[WARN] Failed to copy system templates: {e}")
         
         # Shared Embedder (Cached Singleton)
         self.embedder = get_shared_embedder()

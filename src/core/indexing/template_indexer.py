@@ -265,7 +265,7 @@ class TemplateIndexer:
                                     "is_template": True
                                 }
                             })
-                            logger.info(f"      ✅ Extracted: {comp.name} ({comp.category}) | Deps: {len(comp.dependencies)}")
+                            logger.info(f"      [OK] Extracted: {comp.name} ({comp.category}) | Deps: {len(comp.dependencies)}")
 
                 except Exception as e:
                     logger.error(f"Error analyzing {rel_path}: {e}")

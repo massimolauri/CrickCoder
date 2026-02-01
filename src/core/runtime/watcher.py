@@ -164,14 +164,14 @@ class ProjectWatcher(FileSystemEventHandler):
                 # 1. Cancella vecchio (se non era ignorato)
                 if not ignore_src:
                     self.indexer.delete_file(src_path, self.root_dir, verbose=False)
-                    logger.info(f"   ↳ Vecchio rimosso.")
+                    logger.info(f"   -> Vecchio rimosso.")
 
                 # 2. Inserisci nuovo (se non è ignorato)
                 if not ignore_dest:
                     self.indexer.upsert_file(dest_path, self.root_dir, verbose=False)
-                    logger.info(f"   ↳ Nuovo indicizzato.")
+                    logger.info(f"   -> Nuovo indicizzato.")
             except Exception as e:
-                logger.error(f"❌ Errore Watcher Move: {e}", exc_info=True)
+                logger.error(f"[ERROR] Errore Watcher Move: {e}", exc_info=True)
                 
     def _run_upsert(self, path):
         """Esegue l'aggiornamento nel DB se il contenuto è cambiato."""
@@ -198,7 +198,7 @@ class ProjectWatcher(FileSystemEventHandler):
 
             # 3. Check Differenziale
             if current_hash == stored_hash:
-                # print(f"💤 Skip (Invariato): {os.path.basename(path)}")
+                # print(f"[SKIP] Skip (Invariato): {os.path.basename(path)}")
                 return
 
             # 4. Scrittura Atomica (Thread-Safe)

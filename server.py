@@ -64,7 +64,7 @@ def bootstrap_environment():
             # For now, let's just ensure they exist.
             if not os.listdir(global_public):
                 shutil.copytree(bundled_public, global_public, dirs_exist_ok=True)
-                logger.info("📦 Bootstrapped Bundled Templates to Global Dir")
+                logger.info("[INIT] Bootstrapped Bundled Templates to Global Dir")
         except Exception as e:
             logger.error(f"Failed to bootstrap templates: {e}")
 
@@ -74,7 +74,7 @@ def bootstrap_environment():
         if not os.path.exists(global_kb):
             try:
                 shutil.copytree(bundled_kb, global_kb)
-                logger.info("📦 Bootstrapped Knowledge Base to Global Dir")
+                logger.info("[INIT] Bootstrapped Knowledge Base to Global Dir")
             except Exception as e:
                 logger.error(f"Failed to bootstrap Knowledge Base: {e}")
 
@@ -84,7 +84,7 @@ def bootstrap_environment():
 async def lifespan(app: FastAPI):
     # Startup: Bootstrap & Ready
     bootstrap_environment()
-    logger.info("🚀 Crick Coder API Ready.")
+    logger.info("[READY] Crick Coder API Ready.")
     yield
     # Shutdown: Clean up all active file watchers to free resources
     await codebase_registry.shutdown()
@@ -336,7 +336,7 @@ async def chat_endpoint(req: ChatRequest):
         if not req.agent_id:
             raise HTTPException(status_code=400, detail="agent_id is required for direct communication.")
 
-        logger.info(f"🚀 Direct Agent Chat | Session: {session_id} | Target Agent: {req.agent_id}")
+        logger.info(f"[START] Direct Agent Chat | Session: {session_id} | Target Agent: {req.agent_id}")
 
         # Instantiate Manager (Stateless Logic Facade)
         manager = VibingManager(

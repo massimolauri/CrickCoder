@@ -29,21 +29,21 @@ def run_in_venv(args, cwd=None):
         else:
             args[0] = os.path.join(BUILD_ENV_DIR, "bin", "pyinstaller")
 
-    print(f"🔹 Executing in venv: {' '.join(args)}")
+    print(f"[EXEC] Executing in venv: {' '.join(args)}")
     subprocess.check_call(args, cwd=cwd)
 
 def main():
-    print("🚀 Starting CLEAN Build Process...")
+    print("[START] Starting CLEAN Build Process...")
 
     # 1. Create Venv
     if not os.path.exists(BUILD_ENV_DIR):
-        print(f"📦 Creating virtual environment: {BUILD_ENV_DIR}...")
+        print(f"[INIT] Creating virtual environment: {BUILD_ENV_DIR}...")
         venv.create(BUILD_ENV_DIR, with_pip=True)
     else:
-        print(f"📦 Virtual environment {BUILD_ENV_DIR} exists.")
+        print(f"[INIT] Virtual environment {BUILD_ENV_DIR} exists.")
 
     # 2. Install Dependencies
-    print("⬇️  Installing/Updating dependencies from requirements_build.txt...")
+    print("[DEPS] Installing/Updating dependencies from requirements_build.txt...")
     # Upgrade pip first
     run_in_venv(["python", "-m", "pip", "install", "--upgrade", "pip"])
     run_in_venv(["pip", "install", "-r", REQUIREMENTS_FILE])
@@ -58,20 +58,20 @@ def main():
         shutil.rmtree("build")
     
     # 4. Patch PyInstaller (Workaround for bytecode scan errors)
-    print("🩹 Patching PyInstaller to ignore IndexError in bytecode scan...")
+    print("[PATCH] Patching PyInstaller to ignore IndexError in bytecode scan...")
     patch_pyinstaller()
 
     # 5. Run PyInstaller
-    print("🔨 Running PyInstaller...")
+    print("[BUILD] Running PyInstaller...")
     # We use the existing server.spec
     if not os.path.exists(SPEC_FILE):
-        print(f"❌ Error: {SPEC_FILE} not found!")
+        print(f"[ERROR] Error: {SPEC_FILE} not found!")
         sys.exit(1)
 
     run_in_venv(["pyinstaller", "--noconfirm", "--clean", "--distpath", "server-dist", SPEC_FILE])
 
-    print("\n✅ CLEAN BUILD COMPLETED!")
-    print(f"📁 Output: server-dist/server/")
+    print("\n[DONE] CLEAN BUILD COMPLETED!")
+    print(f"[OUT] Output: server-dist/server/")
 
 def patch_pyinstaller():
     """Patches modulegraph/util.py to ignore IndexError during bytecode scanning."""
@@ -84,7 +84,7 @@ def patch_pyinstaller():
     util_path = os.path.join(site_packages, "PyInstaller", "lib", "modulegraph", "util.py")
     
     if not os.path.exists(util_path):
-        print(f"⚠️ Could not find util.py at {util_path}. Patching skipped.")
+        print(f"[WARN] Could not find util.py at {util_path}. Patching skipped.")
         return
 
     with open(util_path, "r") as f:
@@ -98,9 +98,9 @@ def patch_pyinstaller():
         new_content = content.replace(target, replacement)
         with open(util_path, "w") as f:
             f.write(new_content)
-        print("✅ PyInstaller patched successfully.")
+        print("[OK] PyInstaller patched successfully.")
     else:
-        print("⚠️ Target line not found in util.py. Maybe version differs? Patching skipped.")
+        print("[WARN] Target line not found in util.py. Maybe version differs? Patching skipped.")
 
 
 if __name__ == "__main__":

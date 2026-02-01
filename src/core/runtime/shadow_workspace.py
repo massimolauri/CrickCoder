@@ -84,7 +84,7 @@ class ShadowWorkspace:
                 os.makedirs(os.path.dirname(backup_path), exist_ok=True)
                 
                 shutil.copy2(abs_file_path, backup_path)
-                logger.debug(f"📸 Snapshot created: {rel_path}")
+                logger.debug(f"[SNAP] Snapshot created: {rel_path}")
                 
                 # Update Manifest
                 self._update_manifest(shadow_dir, rel_path)
@@ -149,7 +149,7 @@ class ShadowWorkspace:
             if not files_to_restore:
                 return False
 
-            logger.info(f"⏪ Rolling back run {run_id} ({len(files_to_restore)} files)")
+            logger.info(f"[ROLLBACK] Rolling back run {run_id} ({len(files_to_restore)} files)")
             
             for rel_path in files_to_restore:
                 backup_path = os.path.join(shadow_dir, rel_path)

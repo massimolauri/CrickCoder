@@ -169,7 +169,7 @@ class CodebaseRegistry:
             logger.debug(f"Decrementato ref_count per {abs_path}: {ctx.ref_count}")
 
             if ctx.ref_count == 0:
-                logger.info(f"Progetto {abs_path} ora inattivo (sarà rimosso dal cleanup)")
+                logger.info(f"Progetto {abs_path} ora inattivo (sara' rimosso dal cleanup)")
 
     async def get_active_projects(self):
         """Restituisce lista dei progetti attivi con ref_count."""

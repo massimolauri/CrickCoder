@@ -76,7 +76,7 @@ class VibingManager:
                  # Prepend context to the message
                  # We use a clear separator so the agent knows this is context, not user speech.
                  context_header = (
-                     "\n\n--- 🧠 SYSTEM CONTEXT: CURRENT PROJECT TASKS ---\n"
+                     "\n\n--- [SYSTEM] SYSTEM CONTEXT: CURRENT PROJECT TASKS ---\n"
                      f"{task_content}\n"
                      "--- END CONTEXT ---\n\n"
                  )
