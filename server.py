@@ -29,6 +29,14 @@ from src.core.runtime.shadow_workspace import ShadowWorkspace
 import difflib
 
 # --- Logging Setup ---
+import sys
+import codecs
+
+# FORCE UTF-8 for Windows Console compatibility (Fixes Agno/Rich UnicodeEncodeError)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
