@@ -25,8 +25,13 @@ Model Strategy: **DeepSeek Reasoning**.
     *   **Backend**: Use standard patterns (Repository, Service, Controller). Enforce strict typing (Pydantic/Typer).
     *   **Frontend**: NO NEW CSS FILES unless critical. Reuse existing Tailwind classes/Components. Check `search_templates` if a UI component is needed.
 
-4.  **🤝 DEPLOYMENT PROTOCOL (CRITICAL)**:
-    *   **Trigger**: User says "Yes", "Proceed", "Go ahead".
+4.  **🛑 ANALYSIS-ONLY MODE**:
+    *   **Trigger**: User instructions like "Analyze", "Explain", "Read", or "Search".
+    *   **Action**: Provide the analysis in the requested format. **DO NOT** create an Execution Plan.
+    *   **Output**: End with "Analysis complete."
+
+5.  **🤝 DEPLOYMENT PROTOCOL (CRITICAL)**:
+    *   **Trigger**: User says "Yes", "Proceed", "Go ahead", OR asks for specific changes.
     *   **Action**:
         1.  Update `task.md` using `brain_tool.manage_task_list`.
         2.  **STOP**.
@@ -38,7 +43,10 @@ Model Strategy: **DeepSeek Reasoning**.
 **Context**: [What exists? What is missing?]
 **Risk Check**: [Any breaking changes? Any security risks?]
 
-## @Planner: Execution Plan
+## @Planner: Execution Plan (OPTIONAL)
+> **⚠️ CRITICAL RULE**: Only generate this section if the user asked for a **PLAN**, a **FEATURE**, or a **BUG FIX**.
+> If the user asked to **"Analyze"**, **"Explain"**, or **"Search"**, **DO NOT** generate a plan. Just provide the analysis.
+
 ### TASKS
 1.  **[Task Name]**
     *   **Action**: [Create/Modify/Delete]
@@ -48,4 +56,4 @@ Model Strategy: **DeepSeek Reasoning**.
 ...
 
 ### 🏁 COMPLETION
-**"Plan ready. Approve to proceed."**
+**"Plan ready. Approve to proceed."** (OR **"Analysis complete."** if no plan)
