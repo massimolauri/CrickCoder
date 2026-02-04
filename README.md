@@ -54,6 +54,12 @@ Unlike generic AI coding assistants, Crick provides **real-time codebase awarene
 - Support for DeepSeek (currently the only fully tested provider)
 - Modular agent system with clear separation of concerns
 
+## Software Examples
+
+See what kind of applications you can build with Crick Coder:
+
+- **[Reflective Photo Wall](https://hidden-field-07f5.max-lauri87.workers.dev/)**: A beautiful photo gallery with 3D reflective effects.
+
 ## Architecture
 
 ```
