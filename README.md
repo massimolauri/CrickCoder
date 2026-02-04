@@ -1,8 +1,7 @@
-# Crick Coder - AI-Powered Code Assistant Platform
+﻿# Crick Coder - AI-Powered Code Assistant Platform
 
 <div align="center">
 
-![Crick Coder Logo](crickcoder.png)
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![React](https://img.shields.io/badge/React-19-blue)
@@ -23,7 +22,7 @@ Unlike generic AI coding assistants, Crick provides **real-time codebase awarene
 ## Key Features
 
 ### **Dual-Agent System**
-- **Architect Agent**: Analyzes codebases using vector RAG (Retrieval-Augmented Generation) to understand existing patterns, dependencies, and architecture
+- **Planner Agent**: Analyzes codebases using vector RAG (Retrieval-Augmented Generation) to understand existing patterns, dependencies, and architecture
 - **Coder Agent**: Implements code changes with intelligent file operations and shell command execution
 
 ### **Real-time Codebase Awareness**
@@ -39,12 +38,20 @@ Unlike generic AI coding assistants, Crick provides **real-time codebase awarene
 - Health monitoring and status indicators
 - Dark/light theme support
 
+### **Custom Templates**
+- **Personal Library**: Upload and manage your own HTML, CSS, and JavaScript themes
+- **Reusability**: Save custom templates to easily reuse your preferred styles across different projects
+
+### **Integrated Project Management**
+- **Task Manager**: Organize your development workflow with a built-in task tracking system
+- **Kanban Board**: Visualize active tasks and current progress in real-time
+
 ### **Screenshot**
 
 ![Crick UI Interface](crickui.png)
 
 ### **Extensible Architecture**
-- Support for multiple LLM providers (Anthropic, OpenAI, DeepSeek, Gemini, Ollama, OpenRouter, Nvidia)
+- Support for DeepSeek (currently the only fully tested provider)
 - Modular agent system with clear separation of concerns
 
 ## Architecture
@@ -71,7 +78,7 @@ Unlike generic AI coding assistants, Crick provides **real-time codebase awarene
 │         ▼                         ▼                       │
 │  ┌─────────────┐  ┌───────────────────┐  ┌─────────────┐  │
 │  │   Agents    │  │  Vector Indexer   │  │   Storage   │  │
-│  │ • Architect │  │   (LanceDB)       │  │  (Sessions) │  │
+│  │ • Planner   │  │   (LanceDB)       │  │  (Sessions) │  │
 │  │ • Coder     │  └───────────────────┘  └─────────────┘  │
 │  └─────────────┘                                           │
 └─────────────────────────────────────────────────────────────┘
@@ -185,9 +192,9 @@ To build the application as a standalone desktop app (Windows .exe):
 ### LLM Provider Settings
 Configure your preferred LLM provider through the UI Settings panel:
 
-- **Provider**: Anthropic, OpenAI, DeepSeek, Gemini, Ollama, OpenRouter, Nvidia
-- **Model ID**: Specific model (e.g., `claude-3-5-sonnet`, `gpt-4o`, `deepseek-chat`)
-- **API Key**: Your provider API key (stored locally in browser)
+- **Provider**: DeepSeek (Currently the only fully tested provider)
+- **Model ID**: `deepseek-chat`
+- **API Key**: Your DeepSeek API key (stored locally in browser)
 
 ### Project Configuration
 - **Project Root Path**: Set the absolute path to your codebase
@@ -205,13 +212,13 @@ Configure your preferred LLM provider through the UI Settings panel:
 ### 2. Starting a Session
 1. Click **New Session** in the sidebar
 2. Choose your agent:
-   - **Architect**: For code analysis, architecture review, and planning
+   - **Planner**: For code analysis, architecture review, and planning
    - **Coder**: For code implementation, file operations, and shell commands
 3. Begin chatting with your selected agent
 
 ### 3. Agent Capabilities
 
-#### Architect Agent
+#### Planner Agent
 - Analyze codebase structure and dependencies
 - Identify architectural patterns and anti-patterns
 - Suggest refactoring opportunities
@@ -224,55 +231,6 @@ Configure your preferred LLM provider through the UI Settings panel:
 - Implement code changes based on specifications
 - Run tests and build processes
 - Handle multi-file refactoring
-
-
-## Project Structure
-
-```
-crick/
-├── server.py                 # FastAPI server entry point
-├── requirements.txt          # Python dependencies
-├── README.md                # This file
-├── .env.example             # Example environment configuration
-├── src/
-│   ├── __init__.py
-│   ├── models.py            # Data models and Pydantic schemas
-│   ├── core/               # Core system modules
-│   │   ├── __init__.py
-│   │   ├── manager.py      # VibingManager - central controller
-│   │   ├── orchestrator.py # Agent routing logic
-│   │   ├── monitor.py      # CodebaseRegistry - file watcher management
-│   │   ├── watcher.py      # ProjectWatcher - filesystem monitoring
-│   │   ├── indexer_engine.py # UniversalCodeIndexer - vector indexing
-│   │   ├── storage.py      # Session and agent memory storage
-│   │   ├── streamer.py     # Event streaming for real-time updates
-│   │   └── ...            # Additional core modules
-│   ├── agents/             # AI agent implementations
-│   │   ├── __init__.py
-│   │   ├── architect.py    # Technical architect agent
-│   │   ├── coder.py        # Developer implementation agent
-│   │   ├── factory.py      # Agent factory for building instances
-│   │   └── ...            # Additional agents
-│   ├── tools/              # Agent capabilities
-│   │   ├── __init__.py
-│   │   ├── crickcoder_file_tools.py   # File operations
-│   │   └── crickcoder_shell_tools.py  # Shell command execution
-│   └── prompts/            # Agent instructions and prompts
-│       ├── architect.md    # Architect agent instructions
-│       └── coder.md        # Coder agent instructions
-└── crick-ui/               # React frontend application
-    ├── src/
-    │   ├── components/     # React components
-    │   │   ├── chat/       # Chat interface components
-    │   │   ├── SessionList/ # Session management UI
-    │   │   └── ...        # Additional UI components
-    │   ├── hooks/          # Custom React hooks
-    │   ├── services/       # API client services
-    │   ├── utils/          # Utilities and helpers
-    │   └── types/          # TypeScript type definitions
-    ├── package.json        # Frontend dependencies
-    └── vite.config.ts      # Vite configuration
-```
 
 
 ## Contributing
