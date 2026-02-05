@@ -23,6 +23,7 @@ uvicorn==0.40.0
 
 # Data Processing
 pandas==2.3.3
+beautifulsoup4==4.14.3
 
 # System Utilities & Async Database
 watchdog==6.0.0
