@@ -275,7 +275,7 @@ class UniversalCodeIndexer:
 
         # 4. Esecuzione
         if not to_upsert and not to_delete:
-            print("[SYNC] Nessun cambiamento. DB aggiornato.")
+            print(f"[SYNC] Nessun cambiamento. DB aggiornato. Total files in vector database: {len(self._get_db_state())}")
             return
 
         print(f"[SYNC] Rilevati: +{len(to_upsert)} Upsert, -{len(to_delete)} Delete.")
@@ -289,7 +289,7 @@ class UniversalCodeIndexer:
             print(f"   >> Processing [{i}/{len(to_upsert)}]: {p}", end="\r")
             self.upsert_file(os.path.join(root_dir, p), root_dir, verbose=False)
             
-        print("\n[SYNC] Completato.")
+        print(f"\n[SYNC] Completato. Total files in vector database: {len(self._get_db_state())}")
         self.create_hybrid_indexes()
 
     # ==========================================

@@ -6,6 +6,7 @@ from src.core.storage.storage import get_agent_storage
 from src.core.config.factory_models import build_model_for_runtime
 from src.models import LLMSettings
 from src.prompts.loader import load_prompt
+from src.core.runtime.monitor import codebase_registry
 
 class CrickBrainTools(Toolkit):
     def __init__(self, project_root: str, llm_settings: LLMSettings, session_id: str):
@@ -24,6 +25,7 @@ class CrickBrainTools(Toolkit):
         self.register(self.manage_implementation_plan)
         self.register(self.manage_walkthrough)
         self.register(self.clear_tasks)
+        self.register(self.search_knowledge_base)
 
     def _get_path(self, filename: str) -> str:
         return os.path.join(self.brain_dir, filename)
@@ -146,3 +148,51 @@ Update the file.
             
         await self._version_document("task.md", empty_content, "User requested full task clear.")
         return "Task list has been completely reset."
+
+    async def search_knowledge_base(self, query: str, limit: int = 5) -> str:
+        """
+        Searches the vector knowledge base for relevant code and documentation.
+
+        Args:
+            query: Natural language query describing what you're looking for.
+            limit: Maximum number of results to return (default: 5).
+
+        Returns:
+            Formatted search results with file paths and relevant snippets.
+        """
+        try:
+            print(f"[CrickBrainTools] search_knowledge_base: {query}, limit={limit}")
+            # Get the indexer for this project
+            indexer = await codebase_registry.get_existing_indexer(self.project_root)
+            if not indexer:
+                return f"Error: Knowledge base not initialized for project {self.project_root}. Please ensure the project is properly set up."
+
+            # Execute search
+            results = indexer.search(query, limit=limit)
+
+            if not results:
+                return f"No results found for query: '{query}'"
+
+            # Format results
+            output = f"## Knowledge Base Search Results for '{query}'\n\n"
+            for i, doc in enumerate(results):
+                # Extract metadata and content
+                meta = getattr(doc, 'meta_data', {}) or getattr(doc, 'metadata', {})
+                content = getattr(doc, 'content', '') or getattr(doc, 'page_content', '')
+                path = meta.get('path', 'Unknown')
+                chunk_idx = meta.get('chunk_index', 0)
+                total_chunks = meta.get('total_chunks', 1)
+
+                output += f"**{i+1}. {path}**"
+                if total_chunks > 1:
+                    output += f" (chunk {chunk_idx+1}/{total_chunks})"
+                output += "\n"
+
+                # Show a preview of the content (truncated)
+                preview = content[:300] + "..." if len(content) > 300 else content
+                output += f"```\n{preview}\n```\n\n"
+
+            return output
+
+        except Exception as e:
+            return f"Error searching knowledge base: {str(e)}"

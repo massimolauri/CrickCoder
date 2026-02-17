@@ -53,9 +53,9 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
     tools_list = [brain_tool, file_tools, shell_tools]
 
     # Conditional Template Tools
-    if selected_theme_id:
-        template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
-        tools_list.append(template_tools)
+   # if selected_theme_id:
+    template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
+    tools_list.append(template_tools)
 
     # 4. Build Model
     model = build_model_for_runtime(

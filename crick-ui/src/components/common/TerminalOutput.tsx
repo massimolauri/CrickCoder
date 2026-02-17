@@ -29,8 +29,8 @@ const TerminalOutputComponent: React.FC<TerminalOutputProps> = ({ command, outpu
         <div className="ml-auto opacity-50">{isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</div>
       </div>
       {isExpanded && (
-        <div className={`p-3 overflow-x-auto max-h-80 scrollbar-thin scrollbar-thumb-slate-700 ${isError ? 'text-red-300' : 'text-emerald-300'}`}>
-          <pre className="whitespace-pre-wrap">{output || "Done."}</pre>
+        <div className={`p-3 overflow-x-auto overflow-y-auto max-h-[500px] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent ${isError ? 'text-red-300' : 'text-emerald-300'}`}>
+          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{output || "Done."}</pre>
         </div>
       )}
     </div>

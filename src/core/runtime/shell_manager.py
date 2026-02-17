@@ -117,13 +117,18 @@ class ShellSession:
             
         return result if result else "(No new output)"
 
-    def read_until_idle(self, total_timeout: float = 60.0, idle_timeout: float = 2.0) -> Tuple[str, bool]:
+    def read_until_idle(self, total_timeout: float = 60.0, idle_timeout: float = 2.0, stream_callback=None) -> Tuple[str, bool]:
         """
         Reads output until:
         1. Process exits (returns (output, True))
         2. Total timeout reached (returns (output, False))
         3. No new output for idle_timeout (returns (output, False)) - Indicates waiting for input
         
+        Args:
+            total_timeout: Max time to wait.
+            idle_timeout: Max time to wait for new output.
+            stream_callback: Optional function(str) to call with new output chunks.
+
         Returns:
             (collected_output, is_process_finished)
         """
@@ -137,6 +142,7 @@ class ShellSession:
                 # Process finished, grab remaining output
                 final_chunk = self.read(timeout_sec=0)
                 if final_chunk != "(No new output)":
+                    if stream_callback: stream_callback(final_chunk)
                     collected_parts.append(final_chunk)
                 return "\n".join(collected_parts), True
 
@@ -148,6 +154,7 @@ class ShellSession:
             chunk = self.read(timeout_sec=0.1) # Small wait to allow buffer fill
             
             if chunk != "(No new output)":
+                if stream_callback: stream_callback(chunk)
                 collected_parts.append(chunk)
                 last_new_data_time = time.time() # Reset idle timer
             else:

@@ -411,7 +411,7 @@ async def upload_template_zip(
             indexer = TemplateIndexer(GLOBAL_CRICK_DIR, llm_settings=parsed_settings)
             
             try:
-                for event in indexer.process_template_zip(temp_zip_path):
+                async for event in indexer.process_template_zip(temp_zip_path):
                     # SSE Format: data: <json>\n\n
                     yield f"data: {json.dumps(event)}\n\n"
                     

@@ -44,8 +44,8 @@ def build_planner(project_root: str, session_id: str, auto_approval: bool = Fals
     ]
     
     # Conditional Template Tools
-    if selected_theme_id:
-        tools_list.append(CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings))
+    # Template Tools (Always available)
+    tools_list.append(CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings))
 
     return Agent(
         name="Planner",

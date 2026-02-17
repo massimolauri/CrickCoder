@@ -50,6 +50,7 @@ class CrickCoderTemplateTools(Toolkit):
         self.register(self.search_templates)
         self.register(self.list_installed_templates)
         self.register(self.install_template)
+        self.register(self.adapt_template_component)
 
     def install_template(self, template_id: str, target_path: str = ".") -> str:
         """
@@ -109,34 +110,126 @@ class CrickCoderTemplateTools(Toolkit):
         except Exception as e:
             return f"Error installing template: {str(e)}"
 
-    def search_templates(self, query: str, template_id: Optional[str] = None, limit: int = 5, verbose: bool = False) -> str:
+    def adapt_template_component(self, template_id: str, selector: str, instructions: str) -> str:
         """
-        Searches for code snippets or logic within the installed templates.
+        Adapts a specific component from a template using a dedicated 'clean context' agent.
         
         Args:
-            query: The natural language search query (e.g., "login page component", "sidebar styling").
-            template_id: Optional. If provided, searches only within that specific template.
-            limit: Number of results to return.
-            verbose: If True, returns full code snippets. If False (default), returns compact summaries.
+            template_id: The ID of the template (e.g. "tema607").
+            selector: The generic name or CSS selector of the component (e.g. "navbar", ".sidebar").
+            instructions: User's requirements (e.g. "Change links to React Router, use blue theme").
             
         Returns:
-            A string containing relevant code snippets and their file paths.
+            The fully adapted code ready to be inserted.
+        """
+        try:
+            # 1. Internal Search to get RAW Content (Hidden from Main Chat)
+            # We bypass the summary restriction here because the Ephemeral Agent NEEDS the code.
+            raw_content = self._fetch_raw_component(template_id, selector)
+            
+            if not raw_content:
+                return f"Error: Could not find component matching '{selector}' in template '{template_id}'."
+
+            # 2. Prepare Context for Ephemeral Agent
+            # Minimal Context: Raw Component + Essential Project Files (e.g. index.css for styling tokens)
+            
+            project_styles = ""
+            try:
+                # Try to read index.css or similar global styles to give the agent context on tokens
+                style_path = os.path.join(self.project_root, "src", "index.css") # Assumption
+                if os.path.exists(style_path):
+                     with open(style_path, "r", encoding="utf-8") as f:
+                         project_styles = f.read()
+            except:
+                pass # Optional
+            
+            context_msg = (
+                f"### TARGET COMPONENT (Raw HTML/JS from Reference):\n```html\n{raw_content}\n```\n\n"
+                f"### PROJECT CURRENT STYLES (index.css):\n```css\n{project_styles[:2000]}\n```\n\n" # Truncate Styles
+                f"### ADAPTATION INSTRUCTIONS:\n{instructions}\n"
+            )
+
+            # 3. Spawn Ephemeral Agent
+            if not self.llm_settings:
+                 return "Error: LLM Settings required for Smart Adaptation."
+
+            model = build_model_for_runtime(
+                 provider=self.llm_settings.provider,
+                 model_id=self.llm_settings.model_id,
+                 temperature=0.1,
+                 api_key=self.llm_settings.api_key,
+                 base_url=self.llm_settings.base_url
+            )
+            
+            adapter_agent = Agent(
+                model=model,
+                description="Component Adapter",
+                instructions=(
+                    "You are an expert Frontend Integration Specialist.\n"
+                    "Your task is to ADAPT the provided 'Target Component' to match the 'Project Styles' and 'Instructions'.\n"
+                    "Output ONLY the adapted code block (JSX/TSX/HTML). Do not explain."
+                ),
+                markdown=True
+            )
+            
+            response = adapter_agent.run(context_msg)
+            return f"## Adapted Component ({selector})\n\n{response.content}"
+
+        except Exception as e:
+            return f"Error adapting component: {str(e)}"
+
+    def _fetch_raw_component(self, template_id: str, selector: str) -> Optional[str]:
+        """Internal helper to fetch raw code by semantic search or exact selector match (simplified)."""
+        try:
+            vector_db = LanceDb(
+                    table_name=template_id,
+                    uri=self.db_path,
+                    embedder=self.embedder,
+                    search_type=SearchType.hybrid,
+                    reranker=False
+                )
+            
+            # Hybrid search for selector
+            results = vector_db.search(selector, limit=1)
+            if results:
+                item = results[0]
+                content = getattr(item, 'content', '') or getattr(item, 'page_content', '')
+                # Enrich? The content stored IS the description usually, but we store 'code_snippet' in metadata!
+                # Wait, in indexer:
+                # "text_content": comp.description
+                # "metadata": { ... "code_snippet": raw_code ... }
+                # So we must return the code_snippet from metadata!
+                
+                meta = getattr(item, 'meta_data', {}) or getattr(item, 'metadata', {})
+                return meta.get("code_snippet") or content
+            return None
+        except:
+             return None
+
+    def search_templates(self, query: str, template_id: Optional[str] = None, limit: int = 5) -> str:
+        """
+        Searches for visual components in templates. Returns SUMMARIES ONLY.
+        
+        Args:
+            query: Description of what you need (e.g. "modern pricing table").
+            template_id: Optional. Filter by template.
+            limit: Functionally limited to 5 to prevent context overload.
+            
+        Returns:
+            A list of "Candidate Components" with descriptions and IDs.
+            DOES NOT return full code. Use 'adapt_template_component' to get the code.
         """
         if not os.path.exists(self.db_path):
-            return "No templates installed (Database not found)."
+            return "No templates installed."
 
         try:
             db = lancedb.connect(self.db_path)
-            # list_tables() returns a response object with .tables attribute
             response = db.list_tables()
             table_names = getattr(response, 'tables', [])
             
             if not table_names:
                 return "No templates installed."
 
-            # Determine which tables to search
-            # If template_id is used, we only search that one.
-            # Otherwise we search all available in table_names.
             if template_id:
                 if template_id not in table_names:
                     return f"Template '{template_id}' not found."
@@ -144,14 +237,12 @@ class CrickCoderTemplateTools(Toolkit):
             else:
                 tables_to_search = table_names
             
+            # Cap limit strictly
+            safe_limit = min(limit, 5) 
             all_results = []
-
-            # Accumulate ALL results from all tables first
-            keys_seen = set()
             
+            # Simple Search Loop
             for table_name in tables_to_search:
-                # table_name should be a string now.
-                
                 vector_db = LanceDb(
                     table_name=table_name,
                     uri=self.db_path,
@@ -159,124 +250,31 @@ class CrickCoderTemplateTools(Toolkit):
                     search_type=SearchType.hybrid,
                     reranker=False
                 )
-                
-                # Perform Search - Fetch 'limit' per table to ensure coverage
-                results = vector_db.search(query, limit=limit)
+                results = vector_db.search(query, limit=safe_limit)
                 
                 for res in results:
-                    # Enrich with template name
-                    if hasattr(res, 'meta_data') and isinstance(res.meta_data, dict):
-                         res.meta_data["source_template"] = table_name
-                    elif hasattr(res, 'metadata') and isinstance(res.metadata, dict):
-                         res.metadata["source_template"] = table_name
-                    
-                    # Deduplicate based on content hash or path + template
-                    # (Simple dedup to avoid exact duplicates if any)
-                    content = getattr(res, 'content', '') or getattr(res, 'page_content', '')
-                    if content not in keys_seen:
-                        keys_seen.add(content)
-                        all_results.append(res)
+                     # Enrich
+                     if hasattr(res, 'meta_data') and isinstance(res.meta_data, dict):
+                          res.meta_data["source_template"] = table_name
+                     all_results.append(res)
+
+            # Format Output (Summaries Only)
+            output = f"## Found Components for '{query}'\n\n"
             
-            # Results are returned in natural order (or shuffled by the DB logic if any).
-            # Explicit sorting by score/distance deemed unnecessary/incorrect for this use case.
-
-
-            # Determine candidates for output
-            # If using AI Filter, we can be more generous with input context
-            candidate_limit = limit * 2 if self.llm_settings else limit
-            final_candidates = all_results[:candidate_limit]
-            
-            # Format Output
-            output = f"## Search Results for '{query}'"
-            if template_id:
-                output += f" in template '{template_id}'"
-            output += "\n\n"
-
-            # ------------------------------------------------------------------
-            # SMART RAG LOGIC (Ephemeral Agent) - Only if LLMSettings provided
-            # ------------------------------------------------------------------
-            if self.llm_settings:
-                # 1. Format Raw Context for the Agent
-                raw_context = ""
-                for i, item in enumerate(final_candidates): 
-                    content = getattr(item, 'content', '') or getattr(item, 'page_content', '')
-                    meta = getattr(item, 'meta_data', {}) or getattr(item, 'metadata', {})
-                    path = meta.get("path", "unknown")
-                    name = meta.get("component_name", "Unknown")
-                    tmpl = meta.get("source_template", "unknown")
-                    
-                    # We send everything to the agent, let it decide what's relevant
-                    raw_context += f"--- RESULT {i+1}: {name} (Template: {tmpl}, File: {path}) ---\n{content}\n\n"
-
-                if not raw_context.strip():
-                     return "No relevant templates found to analyze."
-
-                # 2. Spawn Ephemeral Agent
-                try:
-                    model = build_model_for_runtime(
-                        provider=self.llm_settings.provider,
-                        model_id=self.llm_settings.model_id,
-                        temperature=0.1, 
-                        api_key=self.llm_settings.api_key,
-                        base_url=self.llm_settings.base_url
-                    )
-                    
-                    agent = Agent(
-                        model=model,
-                        description="Template Architect Agent",
-                        instructions=load_prompt("brain/template_architect.md"),
-                        markdown=True
-                    )
-                    
-                    user_msg = f"USER QUERY: {query}\n\nRAW RESULTS:\n{raw_context}"
-                    
-                    # Run generic synchronous run 
-                    response = agent.run(user_msg)
-                    return f"## Smart Search Results (AI Filtered)\n\n{response.content}"
-                    
-                except Exception as ai_e:
-                    # Fallback to standard listing if AI fails
-                    output += f"\n*(Smart RAG failed: {ai_e}. Showing raw results below)*\n\n"
-                    # Fallback to original limit
-                    final_candidates = all_results[:limit]
-            # ------------------------------------------------------------------
-            # FALLBACK / LEGACY OUTPUT (If no LLMSettings or AI failed)
-            # ------------------------------------------------------------------
-            
-            for i, item in enumerate(final_candidates): 
-                # Agno Document uses 'content' and 'meta_data'
-                content = getattr(item, 'content', '') or getattr(item, 'page_content', '')
+            for i, item in enumerate(all_results[:safe_limit]):
+                content = getattr(item, 'content', '') or getattr(item, 'page_content', '') # This is DESCRIPTION now
                 meta = getattr(item, 'meta_data', {}) or getattr(item, 'metadata', {})
                 
-                path = meta.get("path", "unknown")
-                tmpl = meta.get("source_template", "unknown")
+                name = meta.get("component_name", "Unknown")
+                tmpl = meta.get("source_template", "?")
+                category = meta.get("category", "UI")
+                selector = meta.get("selector", "N/A")
                 
-                # Extended Metadata from AI Indexing
-                name = meta.get("component_name", "Unknown Component")
-                category = meta.get("category", "UI Element")
-                selector = meta.get("selector", "")
-                code_snippet = meta.get("code_snippet", "")
-                
-                output += f"### Result {i+1}: {name} ({category})\n"
-                output += f"**Template**: {tmpl}\n"
-                output += f"**File**: {path}\n"
-                output += f"**Selector**: `{selector}`\n"
-                
-                # Compact vs Verbose logic
-                short_desc = (content[:300] + '...') if len(content) > 300 else content
-                
-                if verbose:
-                    output += f"**Description**: {content}\n\n"
-                    if code_snippet:
-                        output += "**Code Snippet**:\n```html\n" + code_snippet + "\n```\n"
-                    else:
-                        output += "**Content**:\n```\n" + content + "\n```\n"
-                else:
-                    output += f"**Snippet Preview**: {short_desc}\n"
-                    if code_snippet or len(content) > 300:
-                        output += "*(Full code hidden. Use `verbose=True` to view)*\n"
-                
-                output += "\n---\n\n"
+                output += f"**{i+1}. {name}** ({category})\n"
+                output += f"- **Source**: {tmpl}\n"
+                output += f"- **Selector**: `{selector}`\n"
+                output += f"- **Visual Description**: {content[:200]}...\n" # Truncate description
+                output += f"> *To use: `adapt_template_component(template_id='{tmpl}', selector='{selector}', instructions='...')`*\n\n"
 
             return output
 

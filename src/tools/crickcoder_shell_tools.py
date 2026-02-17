@@ -79,7 +79,14 @@ class CrickCoderShellTools(Toolkit):
 
         # 3. Smart Read (Wait for Exit OR Idle)
         # Idle timeout indicates "The stream paused, maybe waiting for input?"
-        output, is_finished = session.read_until_idle(total_timeout=actual_timeout, idle_timeout=2.0)
+        def stream_printer(chunk):
+            print(chunk, end="", flush=True)
+
+        output, is_finished = session.read_until_idle(
+            total_timeout=actual_timeout, 
+            idle_timeout=2.0,
+            stream_callback=stream_printer
+        )
         
         if is_finished:
             # Process finished naturally
