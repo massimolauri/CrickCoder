@@ -325,6 +325,29 @@ async def get_file_diff(
 
 # --- ENDPOINTS ---
 
+@app.post("/api/project/init")
+async def init_project_endpoint(req: dict):
+    """
+    Initializes project indexing and streams progress events via SSE.
+    The frontend calls this when a project is selected.
+    Chat should be blocked until this returns 'ready'.
+    """
+    project_path = req.get("project_path")
+    if not project_path:
+        raise HTTPException(status_code=400, detail="project_path is required")
+
+    async def progress_generator():
+        try:
+            async for event in codebase_registry.ensure_initialized_with_progress(project_path):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Init Error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'status': 'error', 'detail': str(e)})}\n\n"
+        finally:
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(progress_generator(), media_type="text/event-stream")
+
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     """
@@ -352,7 +375,8 @@ async def chat_endpoint(req: ChatRequest):
             project_root=req.project_path,
             auto_approval=req.auto_approval,
             llm_settings=req.llm_settings,
-            selected_theme_id=req.selected_theme_id
+            selected_theme_id=req.selected_theme_id,
+            enable_parallel=req.enable_parallel
         )
 
         # Delegate the streaming execution to the event generator

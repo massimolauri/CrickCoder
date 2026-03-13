@@ -138,6 +138,15 @@ class CrickCoderShellTools(Toolkit):
         Args:
             command (str): The command to start.
         """
+        # Safety Check for dangerous commands
+        dangerous_prefixes = ["rm ", "del ", "Remove-Item ", "rmdir "]
+        if any(command.strip().lower().startswith(prefix) for prefix in dangerous_prefixes):
+             return (
+                 f"[BLOCKED] The command '{command}' has been intercepted for safety reasons. "
+                 f"As an AI, you are not allowed to delete files using shell commands to prevent accidental data loss due to context amnesia. "
+                 f"If you need to delete a file, you MUST ask the user to do it manually or explicitly give you permission."
+             )
+
         if not self.session_id:
             return "[ERROR] Error: Tool not initialized with valid session_id."
 

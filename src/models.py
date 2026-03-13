@@ -40,6 +40,7 @@ class ChatRequest(BaseModel):
     auto_approval: bool = False
     llm_settings: Optional[LLMSettings] = None 
     selected_theme_id: Optional[str] = None
+    enable_parallel: bool = False
 
 class ContinueRequest(BaseModel):
     """Payload for resuming a paused run (HITL)."""

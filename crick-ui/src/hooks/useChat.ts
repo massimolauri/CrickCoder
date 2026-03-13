@@ -266,6 +266,38 @@ export function useChat(options: UseChatOptions) {
             });
             break;
 
+          case 'parallel_start':
+            timeline.push({
+              type: 'parallel',
+              tasks: event.tasks.map(t => ({ ...t, status: 'pending' as const })),
+            });
+            break;
+
+          case 'parallel_progress': {
+            // Find the parallel timeline item and update the specific task status
+            const parallelItem = timeline.find(item => item.type === 'parallel');
+            if (parallelItem && parallelItem.type === 'parallel') {
+              const taskToUpdate = parallelItem.tasks.find(t => t.index === event.task_index);
+              if (taskToUpdate) {
+                taskToUpdate.status = event.status as 'started' | 'completed' | 'failed';
+              }
+              // Replace in timeline to trigger re-render
+              const parallelIdx = timeline.indexOf(parallelItem);
+              timeline[parallelIdx] = { ...parallelItem, tasks: [...parallelItem.tasks] };
+            }
+            break;
+          }
+
+          case 'parallel_end': {
+            // Update parallel item with final duration
+            const pItem = timeline.find(item => item.type === 'parallel');
+            if (pItem && pItem.type === 'parallel') {
+              const pIdx = timeline.indexOf(pItem);
+              timeline[pIdx] = { ...pItem, duration: event.duration };
+            }
+            break;
+          }
+
           case 'meta':
             // Aggiorna shadowRunId nel messaggio corrente se ricevuto
             // Questo permette alla UI di mostrare il bottone Undo/Reject

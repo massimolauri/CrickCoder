@@ -1,5 +1,6 @@
 import { buildChatBody, buildContinueBody } from './apiClient';
 import type { ChatEvent, EventCallback, LLMSettings } from '@/types/api.types';
+import { userSettingsStorage } from '@/utils/storage';
 
 /** Opzioni per invio messaggio */
 export interface SendMessageOptions {
@@ -57,7 +58,19 @@ export class ChatService {
     } = options;
 
     try {
-      const body = buildChatBody(message, projectPath, sessionId, agentId, llmSettings, autoApproval ?? true, selectedThemeId);
+      const userSettings = userSettingsStorage.get();
+      const enableParallel = userSettings?.experimentalParallelExecution ?? false;
+
+      const body = buildChatBody(
+        message,
+        projectPath,
+        sessionId,
+        agentId,
+        llmSettings,
+        autoApproval ?? true,
+        selectedThemeId,
+        enableParallel
+      );
 
       const response = await fetch(`${this.baseUrl}/api/chat`, {
         method: 'POST',
@@ -356,8 +369,41 @@ export class ChatService {
             tool: parsed.tool,
           };
 
+        case 'parallel_start':
+          return {
+            type: 'parallel_start',
+            tasks: parsed.tasks || [],
+            count: parsed.count || 0,
+            agent: parsed.agent || 'Orchestrator'
+          };
+
+        case 'parallel_progress':
+          return {
+            type: 'parallel_progress',
+            task_index: parsed.task_index ?? 0,
+            task_description: parsed.task_description || '',
+            status: parsed.status || 'started',
+            agent: parsed.agent || 'System'
+          };
+
+        case 'parallel_end':
+          return {
+            type: 'parallel_end',
+            duration: parsed.duration || 0,
+            total: parsed.total || 0,
+            succeeded: parsed.succeeded || 0,
+            failed: parsed.failed || 0,
+            agent: parsed.agent || 'Orchestrator'
+          };
+
         default:
-          throw new Error(`Unknown event type: ${parsed.type}`);
+          // Graceful fallback: log unknown events instead of crashing
+          console.warn(`Unknown SSE event type: ${parsed.type}`, parsed);
+          return {
+            type: 'content',
+            content: '',
+            agent: parsed.agent || 'System'
+          } as ChatEvent;
       }
     } catch (error) {
       if (error instanceof SyntaxError) {

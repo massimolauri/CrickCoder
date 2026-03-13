@@ -140,6 +140,86 @@ class CodebaseRegistry:
             self._active_contexts[abs_path] = ctx
             logger.info(f"Nuovo progetto attivato: {abs_path} (ref_count: {ctx.ref_count})")
 
+    async def ensure_initialized_with_progress(self, raw_path: str):
+        """
+        Like ensure_initialized but yields progress events as dicts.
+        Used by the /api/project/init SSE endpoint.
+        """
+        await self._cleanup_inactive()
+        abs_path = self._normalize_path(raw_path)
+
+        if not os.path.exists(abs_path):
+            yield {"status": "error", "detail": f"Path not found: {abs_path}"}
+            return
+
+        async with self._lock:
+            # Cache hit — already initialized
+            if abs_path in self._active_contexts:
+                ctx = self._active_contexts[abs_path]
+                ctx.ref_count += 1
+                ctx.last_used = time.time()
+                yield {"status": "ready", "detail": "Project already indexed", "current": 0, "total": 0}
+                return
+
+        # New project — need to index with progress
+        yield {"status": "scanning", "detail": "Starting project analysis...", "current": 0, "total": 0}
+
+        db_path = get_db_path(abs_path)
+        indexer = UniversalCodeIndexer(db_path, TABLE_NAME)
+
+        # Bridge sync progress_callback to async via queue
+        progress_queue = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+
+        def on_progress(status, current, total, detail):
+            """Thread-safe callback: pushes events to the async queue."""
+            loop.call_soon_threadsafe(
+                progress_queue.put_nowait,
+                {"status": status, "current": current, "total": total, "detail": detail}
+            )
+
+        # Run sync_project in thread with progress callback
+        sync_task = loop.run_in_executor(
+            None, indexer.sync_project, abs_path, on_progress
+        )
+
+        # Consume progress events while sync runs
+        while True:
+            # Check if sync finished
+            done = sync_task.done()
+
+            # Drain all available events
+            while not progress_queue.empty():
+                event = await progress_queue.get()
+                yield event
+
+            if done:
+                # Drain any remaining events
+                while not progress_queue.empty():
+                    event = await progress_queue.get()
+                    yield event
+                break
+
+            # Small sleep to avoid busy-wait
+            await asyncio.sleep(0.1)
+
+        # Check for exceptions
+        try:
+            sync_task.result()
+        except Exception as e:
+            yield {"status": "error", "detail": str(e), "current": 0, "total": 0}
+            return
+
+        # Start watcher
+        observer = start_watcher(indexer, abs_path)
+
+        async with self._lock:
+            self._active_contexts[abs_path] = ActiveContext(
+                indexer=indexer, observer=observer, ref_count=1, last_used=time.time()
+            )
+
+        yield {"status": "ready", "detail": "Indexing complete", "current": 0, "total": 0}
+
     async def shutdown(self):
         """Ferma tutti i watcher (chiamato alla chiusura del server)."""
         async with self._lock:

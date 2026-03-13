@@ -21,6 +21,7 @@ class CrickBrainTools(Toolkit):
         os.makedirs(self.brain_dir, exist_ok=True)
         
         self.register(self.read_document)
+        self.register(self.update_task)
         self.register(self.manage_task_list)
         self.register(self.manage_implementation_plan)
         self.register(self.manage_walkthrough)
@@ -111,6 +112,40 @@ Update the file.
             return f"File {filename} does not exist in brain."
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
+
+    def update_task(self, task_text: str) -> str:
+        """
+        FAST UPDATE: Instantly marks a specific task as completed in task.md without using AI.
+        Use this tool when you finish coding to check off your assigned task.
+        Args:
+            task_text: A snippet of the task text to match (e.g., 'Setup DB', 'Fix the login bug').
+        """
+        file_path = self._get_path("task.md")
+        if not os.path.exists(file_path):
+            return "Error: task.md does not exist yet."
+            
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        lines = content.splitlines()
+        updated = False
+        
+        for i, line in enumerate(lines):
+            # Look for an unchecked task that matches the requested text
+            if line.strip().startswith("- [ ]") and task_text.lower() in line.lower():
+                # Replace the first occurrence of [ ] with [x]
+                lines[i] = line.replace("- [ ]", "- [x]", 1)
+                updated = True
+                break
+                
+        if not updated:
+            return f"Error: Could not find an uncompleted task matching '{task_text}'."
+            
+        new_content = "\n".join(lines)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+            
+        return f"Success: Task matching '{task_text}' marked as completed."
 
     async def manage_task_list(self, instruction: str) -> str:
         """

@@ -17,6 +17,7 @@ class CrickCoderFileTools(Toolkit):
         enable_search_files: bool = True,
         enable_read_file_chunk: bool = True,
         enable_replace_file_chunk: bool = True,
+        enable_replace_lines: bool = True,
         expose_base_directory: bool = False,
         max_file_length: int = 10000000,
         max_file_lines: int = 100000,
@@ -72,6 +73,10 @@ class CrickCoderFileTools(Toolkit):
             tools.append(self.replace_file_chunk)
             if enable_confirmation: tools_needing_confirmation.append("replace_file_chunk")
 
+        if all or enable_replace_lines:
+            tools.append(self.replace_lines)
+            if enable_confirmation: tools_needing_confirmation.append("replace_lines")
+
         # --- PARENT INITIALIZATION ---
         # Pass the dynamic list to Agno
         super().__init__(
@@ -85,7 +90,10 @@ class CrickCoderFileTools(Toolkit):
     # Ricopio solo i metodi chiave per completezza, ma la logica interna non cambia.
 
     def save_file(self, contents: str, file_name: str, overwrite: bool = True, encoding: str = "utf-8") -> str:
-        """Saves the contents to a file called `file_name`."""
+        """Saves the contents to a file called `file_name`. 
+        WARNING: Do NOT use this tool to update existing  files or files over 100 lines. 
+        Use `replace_file_chunk` or `replace_lines` instead! Only use this for brand new files.
+        """
         try:
             safe, file_path = self.check_escape(file_name)
             if not (safe):
@@ -182,6 +190,49 @@ class CrickCoderFileTools(Toolkit):
 
         except Exception as e:
             log_error(f"Error updating {file_name}: {e}")
+            return f"System Error: {str(e)}"
+
+    def replace_lines(self, file_name: str, start_line: int, end_line: int, replace_text: str, encoding: str = "utf-8") -> str:
+        """Replaces a specific block of lines in a file with new text.
+        `start_line` and `end_line` are 1-indexed. The lines from `start_line` to `end_line` (inclusive) will be replaced by `replace_text`.
+        """
+        try:
+            safe, file_path = self.check_escape(file_name)
+            if not safe:
+                return f"Error: Path '{file_name}' is outside base directory."
+            
+            if not file_path.exists():
+                return f"Error: File '{file_name}' does not exist."
+
+            content = file_path.read_text(encoding=encoding)
+            lines = content.split(self.line_separator)
+            
+            if start_line < 1 or end_line < start_line or start_line > len(lines):
+                return f"Error: Invalid line range. start_line: {start_line}, end_line: {end_line}, total lines: {len(lines)}"
+
+            # 1-indexed to 0-indexed
+            start_idx = start_line - 1
+            end_idx = min(end_line, len(lines))
+
+            # Replace the lines
+            new_lines = lines[:start_idx] + [replace_text] + lines[end_idx:]
+            new_content = self.line_separator.join(new_lines)
+
+            # --- SHADOW SNAPSHOT ---
+            try:
+                from src.core.runtime.shadow_workspace import ShadowWorkspace
+                ShadowWorkspace.get_instance().snapshot(str(file_path))
+            except Exception as e:
+                log_error(f"Shadow Snapshot failed: {e}")
+            # -----------------------
+
+            file_path.write_text(new_content, encoding=encoding)
+            
+            log_debug(f"Successfully patched lines in {file_name}")
+            return f"Success: Updated lines {start_line}-{end_line} in {file_name}."
+
+        except Exception as e:
+            log_error(f"Error updating lines in {file_name}: {e}")
             return f"System Error: {str(e)}"
 
     def delete_file(self, file_name: str) -> str:

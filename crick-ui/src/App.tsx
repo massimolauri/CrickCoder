@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Menu, ChevronRight, Settings, Folder, LayoutTemplate, Moon, Sun, Loader2, ExternalLink
+  Menu, ChevronRight, Settings, Folder, LayoutTemplate, Moon, Sun, Loader2, ExternalLink, Database
 } from 'lucide-react';
+import { getBackendUrl } from '@/services/apiClient';
 
 // Import servizi e hook
 import { useChat } from '@/hooks/useChat';
 import { chatService } from '@/services/chatService';
 import { useHealth } from '@/hooks/useHealth';
 import { sessionService } from '@/services/sessionService';
-import { projectStorage, llmSettingsStorage, type LLMSettings } from '@/utils/storage';
+import { projectStorage, llmSettingsStorage, userSettingsStorage, type LLMSettings, type UserSettings } from '@/utils/storage';
 
 // Import componenti UI
 import SessionList from '@/components/SessionList/SessionList';
@@ -44,9 +45,20 @@ export default function CrickInterface() {
       base_url: "", // Force clear any legacy base_url (es. ZhipuAI) to use DeepSeek default
     };
   });
+  const [userSettings, setUserSettings] = useState<UserSettings>(() => userSettingsStorage.get() || {
+    theme: 'dark',
+    autoScroll: true,
+    showToolDetails: true,
+    notifications: true,
+    experimentalParallelExecution: false,
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSessions, setShowSessions] = useState(true);
+
+  // Indexing state
+  const [indexingStatus, setIndexingStatus] = useState<'idle' | 'indexing' | 'ready'>('idle');
+  const [indexingProgress, setIndexingProgress] = useState({ current: 0, total: 0, detail: '', status: '' });
 
   // Theme Toggle State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -158,17 +170,105 @@ export default function CrickInterface() {
   }, []);
 
 
-  // Salva projectPath quando cambia
+  // Salva projectPath e trigger indexing
   useEffect(() => {
     if (projectPath) {
       projectStorage.set(projectPath);
     }
   }, [projectPath]);
 
+  // Index project when projectPath changes AND server is online
+  useEffect(() => {
+    if (!projectPath || !health.isOnline) return;
+
+    console.log('[INIT] Starting project init for:', projectPath);
+    const controller = new AbortController();
+    setIndexingStatus('indexing');
+    setIndexingProgress({ current: 0, total: 0, detail: 'Connecting...', status: 'scanning' });
+
+    (async () => {
+      try {
+        const url = `${getBackendUrl()}/api/project/init`;
+        console.log('[INIT] Fetching:', url);
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_path: projectPath }),
+          signal: controller.signal,
+        });
+
+        console.log('[INIT] Response status:', res.status);
+
+        if (!res.ok || !res.body) {
+          console.warn('[INIT] Bad response, skipping init. Status:', res.status);
+          setIndexingStatus('ready');
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            if (line.startsWith('data: ')) {
+              const data = line.replace('data: ', '').trim();
+              if (data === '[DONE]') {
+                console.log('[INIT] Stream complete [DONE]');
+                setIndexingStatus('ready');
+                return;
+              }
+              try {
+                const evt = JSON.parse(data);
+                console.log('[INIT] Event:', evt.status, evt.detail);
+                if (evt.status === 'ready') {
+                  setIndexingStatus('ready');
+                  return;
+                } else if (evt.status === 'error') {
+                  console.error('[INIT] Indexing error:', evt.detail);
+                  setIndexingStatus('ready');
+                  return;
+                }
+                setIndexingProgress({
+                  current: evt.current || 0,
+                  total: evt.total || 0,
+                  detail: evt.detail || '',
+                  status: evt.status || '',
+                });
+              } catch { /* ignore parse errors */ }
+            }
+          }
+        }
+        setIndexingStatus('ready');
+      } catch (err) {
+        if ((err as any)?.name !== 'AbortError') {
+          console.error('[INIT] Error:', err);
+        }
+        setIndexingStatus('ready');
+      }
+    })();
+
+    return () => controller.abort();
+  }, [projectPath, health.isOnline]);
+
   // Salva llmSettings quando cambiano
   useEffect(() => {
     llmSettingsStorage.set(llmSettings);
   }, [llmSettings]);
+
+  // Salva userSettings quando cambiano
+  useEffect(() => {
+    userSettingsStorage.set(userSettings);
+  }, [userSettings]);
 
   // Handler invio messaggio
   const handleSubmit = useCallback((message: string) => {
@@ -185,8 +285,9 @@ export default function CrickInterface() {
   // Placeholder memoizzato
   const placeholder = useMemo(() => {
     if (health.isOffline) return 'Server offline - unable to chat';
+    if (indexingStatus === 'indexing') return 'Indexing project... please wait';
     return projectPath ? 'Ask team to build/fix something...' : 'Link a project path in settings first...';
-  }, [health.isOffline, projectPath]);
+  }, [health.isOffline, projectPath, indexingStatus]);
 
   // Show session selection badge
   const showSessionSelectionBadge = (sessionId: string, isNew: boolean = false) => {
@@ -467,6 +568,27 @@ export default function CrickInterface() {
                 </div>
               </div>
 
+              {/* Sezione Experimental Features */}
+              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-[#3e3e42]">
+                <label className="text-xs font-mono text-slate-500 uppercase tracking-wider">Experimental Features</label>
+
+                <div className="flex items-center justify-between p-3 bg-crick-surface border border-gray-200 dark:border-[#3e3e42] rounded-xl">
+                  <div className="flex flex-col pr-4">
+                    <span className="text-sm font-medium text-crick-text-primary">Enable Parallel Task Execution</span>
+                    <span className="text-xs text-slate-500">Allows multiple ephemeral coders to run concurrently for faster execution. Keep this off for maximum stability.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={userSettings.experimentalParallelExecution || false}
+                      onChange={(e) => setUserSettings({ ...userSettings, experimentalParallelExecution: e.target.checked })}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-crick-accent"></div>
+                  </label>
+                </div>
+              </div>
+
               {/* Save button */}
               <div className="flex justify-end pt-4">
                 <button
@@ -569,13 +691,50 @@ export default function CrickInterface() {
           </div>
         )}
 
+        {/* Indexing Progress Banner */}
+        {indexingStatus === 'indexing' && (
+          <div className="mx-4 sm:mx-8 mb-2 animate-in slide-in-from-bottom-2 fade-in duration-300">
+            <div className="max-w-4xl mx-auto bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <Database size={16} className="text-blue-400 animate-pulse" />
+                <span className="text-sm font-medium text-blue-400">
+                  {indexingProgress.status === 'scanning' && 'Scanning project files...'}
+                  {indexingProgress.status === 'analyzing' && 'Analyzing changes...'}
+                  {indexingProgress.status === 'indexing' && 'Indexing codebase...'}
+                  {indexingProgress.status === 'building_indexes' && 'Building search indexes...'}
+                  {!['scanning', 'analyzing', 'indexing', 'building_indexes'].includes(indexingProgress.status) && 'Initializing...'}
+                </span>
+                {indexingProgress.total > 0 && (
+                  <span className="text-xs text-blue-400/70 font-mono ml-auto">
+                    {indexingProgress.current}/{indexingProgress.total}
+                  </span>
+                )}
+              </div>
+              {indexingProgress.total > 0 && (
+                <div className="w-full bg-blue-500/10 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${Math.round((indexingProgress.current / indexingProgress.total) * 100)}%` }}
+                  />
+                </div>
+              )}
+              {indexingProgress.total === 0 && (
+                <div className="w-full bg-blue-500/10 rounded-full h-1.5 overflow-hidden">
+                  <div className="h-full bg-blue-500/50 rounded-full animate-pulse" style={{ width: '100%' }} />
+                </div>
+              )}
+              <p className="text-xs text-blue-400/60 mt-1.5 font-mono truncate">{indexingProgress.detail}</p>
+            </div>
+          </div>
+        )}
+
         {/* Chat input */}
         <div className="p-4 bg-crick-bg border-t border-gray-100 dark:border-[#3e3e42] z-20">
           <ChatInput
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             streaming={chat.streaming}
-            disabled={chat.streaming || health.isOffline}
+            disabled={chat.streaming || health.isOffline || indexingStatus === 'indexing'}
             placeholder={placeholder}
             selectedThemeId={chat.selectedThemeId}
             onThemeSelect={chat.setSelectedThemeId}

@@ -164,11 +164,7 @@ class CrickCoderTemplateTools(Toolkit):
             adapter_agent = Agent(
                 model=model,
                 description="Component Adapter",
-                instructions=(
-                    "You are an expert Frontend Integration Specialist.\n"
-                    "Your task is to ADAPT the provided 'Target Component' to match the 'Project Styles' and 'Instructions'.\n"
-                    "Output ONLY the adapted code block (JSX/TSX/HTML). Do not explain."
-                ),
+                instructions=load_prompt("brain/template_architect.md"),
                 markdown=True
             )
             

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Loader2, Check, Wrench } from 'lucide-react';
+import { Loader2, Check, Wrench, Zap } from 'lucide-react';
 import { getAgentConfig } from '@/utils/agentUtils';
 
 export interface ToolBadgeProps {
@@ -37,8 +37,10 @@ const ToolBadgeComponent: React.FC<ToolBadgeProps> = ({ tool, args, status, agen
           <Check size={10} className="text-emerald-500" />
         )}
         <span className={`font-bold uppercase opacity-70 ${config.color}`}>{agent}</span>
-        <span className="text-gray-500 dark:text-slate-500">
-          executes <strong className="text-gray-700 dark:text-slate-400">{tool}</strong>
+        <span className="text-gray-500 dark:text-slate-500 font-normal flex items-center gap-1.5 ml-1">
+          executes
+          {tool === "Parallel_Workers" && <Zap size={10} className="text-yellow-500 fill-yellow-500/30 animate-pulse" />}
+          <strong className="text-gray-700 dark:text-slate-400 font-mono tracking-tight">{tool.replace(/_/g, " ")}</strong>
         </span>
       </div>
       {argsStr && (

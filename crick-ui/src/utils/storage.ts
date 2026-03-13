@@ -91,6 +91,7 @@ export interface UserSettings {
   autoScroll?: boolean;
   showToolDetails?: boolean;
   notifications?: boolean;
+  experimentalParallelExecution?: boolean;
 }
 
 export const userSettingsStorage = createStorage<UserSettings>('crick_user_settings', {
@@ -99,6 +100,7 @@ export const userSettingsStorage = createStorage<UserSettings>('crick_user_setti
     autoScroll: true,
     showToolDetails: true,
     notifications: true,
+    experimentalParallelExecution: false,
   },
 });
 

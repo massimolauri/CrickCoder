@@ -53,9 +53,9 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
     tools_list = [brain_tool, file_tools, shell_tools]
 
     # Conditional Template Tools
-   # if selected_theme_id:
-    template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
-    tools_list.append(template_tools)
+    if selected_theme_id:
+        template_tools = CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings)
+        tools_list.append(template_tools)
 
     # 4. Build Model
     model = build_model_for_runtime(
@@ -74,7 +74,7 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         # Compression Manager
         compression_manager=CompressionManager(
             model=model,
-            compress_tool_results=False,
+            compress_tool_results=True,
             compress_token_limit=get_token_limit_for_model(llm_settings.model_id, llm_settings.compression_threshold)
         ),
         # Shared Knowledge
@@ -87,8 +87,7 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         # Instructions
         instructions=[
             load_prompt("coder.md", model_id=llm_settings.model_id),
-            os_context,
-            "Follow the Strict Workflow: Orientation -> Planning -> Execution -> Reporting."
+            os_context
         ],
         
         # Storage & Session
@@ -97,6 +96,56 @@ def build_coder(project_root: str, session_id: str, auto_approval: bool = False,
         add_history_to_context=True, 
         num_history_runs=5,
         
+        debug_mode=True,
+        markdown=True
+    )
+
+def build_ephemeral_coder(project_root: str, session_id: str, auto_approval: bool = False, llm_settings: Optional[LLMSettings] = None):
+    """
+    Builds a lightweight, ephemeral Coder Agent designed STRICTLY for parallel execution.
+    - No SQLite History DB (stateless).
+    - Reduced tools (No Brain Tools).
+    - Optimized single-shot prompt.
+    """
+    current_os = platform.system()
+    os_context = f"SYSTEM OS: {current_os}."
+
+    if not llm_settings:
+        raise ValueError("llm_settings is required to build the Ephemeral Coder agent")
+
+    enable_tool_confirmation = not auto_approval
+
+    # Only File and Shell tools. No Brain tools.
+    file_tools = CrickCoderFileTools(
+        base_dir=Path(project_root),
+        enable_confirmation=enable_tool_confirmation
+    )
+    
+    shell_tools = CrickCoderShellTools(
+        base_dir=Path(project_root),
+        timeout_seconds=120,
+        enable_confirmation=enable_tool_confirmation,
+        session_id=f"{session_id}_ephemeral_{id(file_tools)}" # Unique shell session
+    )
+
+    model = build_model_for_runtime(
+        provider=llm_settings.provider,
+        model_id=llm_settings.model_id,
+        temperature=llm_settings.temperature,
+        api_key=llm_settings.api_key,
+        base_url=llm_settings.base_url
+    )
+
+    return Agent(
+        name="EphemeralCoder",
+        role="Parallel Worker",
+        model=model,
+        # NO database storage attached to prevent lock contention
+        tools=[file_tools, shell_tools],
+        instructions=[
+            load_prompt("ephemeral_coder.md", model_id=llm_settings.model_id),
+            os_context
+        ],
         debug_mode=True,
         markdown=True
     )

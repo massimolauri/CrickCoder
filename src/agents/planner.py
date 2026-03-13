@@ -44,8 +44,8 @@ def build_planner(project_root: str, session_id: str, auto_approval: bool = Fals
     ]
     
     # Conditional Template Tools
-    # Template Tools (Always available)
-    tools_list.append(CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings))
+    if selected_theme_id:
+        tools_list.append(CrickCoderTemplateTools(project_root=project_root, llm_settings=llm_settings))
 
     return Agent(
         name="Planner",
@@ -54,7 +54,7 @@ def build_planner(project_root: str, session_id: str, auto_approval: bool = Fals
         # Compression Manager to save context
         compression_manager=CompressionManager(
             model=model,
-            compress_tool_results=False, 
+            compress_tool_results=True, 
             compress_token_limit=get_token_limit_for_model(llm_settings.model_id, llm_settings.compression_threshold)
         ),
         knowledge=get_shared_knowledge(project_root),

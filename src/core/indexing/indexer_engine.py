@@ -237,16 +237,25 @@ class UniversalCodeIndexer:
         except Exception as e:
             print(f"[WARN]  Manutenzione indici fallita: {e}")
 
-    def sync_project(self, root_dir: str):
+    def sync_project(self, root_dir: str, progress_callback=None):
         """Scansiona la cartella e aggiorna il DB (CON DEBUG)."""
+        def _report(status, current=0, total=0, detail=""):
+            """Internal helper to emit progress if callback provided."""
+            if progress_callback:
+                progress_callback(status, current, total, detail)
+        
         print(f"[SYNC] Avvio analisi su: {root_dir}")
+        _report("scanning", 0, 0, "Reading project files...")
         
         # 1. Recupero stati
         disk_files = self._scan_disk_hashes(root_dir)
+        _report("scanning", 0, 0, f"Found {len(disk_files)} files on disk")
+        
         db_state = self._get_db_state() 
 
         # DEBUG: Stato generale
         print(f"[DEBUG STATS] Files su Disco: {len(disk_files)} | Files nel DB: {len(db_state)}")
+        _report("analyzing", 0, 0, "Comparing with existing index...")
 
         to_upsert = []
         to_delete = []
@@ -276,21 +285,29 @@ class UniversalCodeIndexer:
         # 4. Esecuzione
         if not to_upsert and not to_delete:
             print(f"[SYNC] Nessun cambiamento. DB aggiornato. Total files in vector database: {len(self._get_db_state())}")
+            _report("ready", 0, 0, "Index is up to date")
             return
 
+        total_ops = len(to_upsert) + len(to_delete)
         print(f"[SYNC] Rilevati: +{len(to_upsert)} Upsert, -{len(to_delete)} Delete.")
+        _report("indexing", 0, total_ops, f"{len(to_upsert)} to index, {len(to_delete)} to remove")
         
         # Esecuzione Cancellazioni
-        for p in to_delete:
+        for i, p in enumerate(to_delete):
             self.delete_file(os.path.join(root_dir, p), root_dir, verbose=False)
+            _report("indexing", i + 1, total_ops, f"Removing {p}")
             
         # Esecuzione Inserimenti
+        delete_count = len(to_delete)
         for i, p in enumerate(to_upsert, 1):
             print(f"   >> Processing [{i}/{len(to_upsert)}]: {p}", end="\r")
             self.upsert_file(os.path.join(root_dir, p), root_dir, verbose=False)
+            _report("indexing", delete_count + i, total_ops, p)
             
         print(f"\n[SYNC] Completato. Total files in vector database: {len(self._get_db_state())}")
+        _report("building_indexes", 0, 0, "Optimizing search indexes...")
         self.create_hybrid_indexes()
+        _report("ready", total_ops, total_ops, "Indexing complete")
 
     # ==========================================
     # 3. HELPER PRIVATI

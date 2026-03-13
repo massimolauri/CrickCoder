@@ -14,12 +14,12 @@ from typing import Optional
 # =============================================================================
 
 MODEL_LIMITS = {
-    "deepseek-chat": 84000,
-    "glm-4.6": 84000,
-    "glm-4.7": 84000
+    "deepseek-chat": 64000,
+    "glm-4.6": 64000,
+    "glm-4.7": 64000
 }
 
-DEFAULT_LIMIT = 32000
+DEFAULT_LIMIT = 64000
 
 def get_token_limit_for_model(model_id: str, custom_limit: Optional[int] = None) -> int:
     """

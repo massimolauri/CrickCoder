@@ -209,7 +209,8 @@ export function buildChatBody(
   agentId?: "ARCHITECT" | "CODER" | "PLANNER",
   llmSettings?: LLMSettings,
   autoApproval: boolean = true,
-  selectedThemeId?: string | null
+  selectedThemeId?: string | null,
+  enableParallel?: boolean
 ) {
   return {
     message,
@@ -219,6 +220,7 @@ export function buildChatBody(
     ...(llmSettings && { llm_settings: llmSettings }),
     auto_approval: autoApproval,
     ...(selectedThemeId && { selected_theme_id: selectedThemeId }),
+    ...(enableParallel !== undefined && { enable_parallel: enableParallel }),
   };
 }
 

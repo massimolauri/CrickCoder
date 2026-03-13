@@ -92,7 +92,7 @@ export interface TemplatesResponse {
 // ==================== SSE EVENTS ====================
 
 /** Tipo base evento SSE */
-export type ChatEventType = 'content' | 'tool_start' | 'tool_end' | 'error' | 'paused' | 'meta';
+export type ChatEventType = 'content' | 'tool_start' | 'tool_end' | 'error' | 'paused' | 'meta' | 'parallel_start' | 'parallel_progress' | 'parallel_end';
 
 /** Evento metadati (es. shadow_run_id) */
 export interface MetaEvent {
@@ -138,8 +138,35 @@ export interface PausedEvent {
   tool: string;
 }
 
+/** Evento inizio esecuzione parallela */
+export interface ParallelStartEvent {
+  type: 'parallel_start';
+  tasks: { index: number; description: string }[];
+  count: number;
+  agent: string;
+}
+
+/** Evento progresso worker parallelo */
+export interface ParallelProgressEvent {
+  type: 'parallel_progress';
+  task_index: number;
+  task_description: string;
+  status: 'started' | 'completed' | 'failed';
+  agent: string;
+}
+
+/** Evento fine esecuzione parallela */
+export interface ParallelEndEvent {
+  type: 'parallel_end';
+  duration: number;
+  total: number;
+  succeeded: number;
+  failed: number;
+  agent: string;
+}
+
 /** Unione di tutti i tipi di evento chat */
-export type ChatEvent = ContentEvent | ToolStartEvent | ToolEndEvent | ErrorEvent | PausedEvent | MetaEvent;
+export type ChatEvent = ContentEvent | ToolStartEvent | ToolEndEvent | ErrorEvent | PausedEvent | MetaEvent | ParallelStartEvent | ParallelProgressEvent | ParallelEndEvent;
 
 /** Callback per eventi SSE */
 export type EventCallback = (event: ChatEvent) => void;
@@ -181,7 +208,8 @@ export interface ChatMessage {
 export type TimelineItem =
   | { type: 'terminal'; command: string; output: string; agent: string }
   | { type: 'tool'; tool: string; args: any; status: 'running' | 'completed'; agent: string }
-  | { type: 'text'; content: string; agent: string };
+  | { type: 'text'; content: string; agent: string }
+  | { type: 'parallel'; tasks: { index: number; description: string; status: 'pending' | 'started' | 'completed' | 'failed' }[]; duration?: number };
 
 /** Stato server */
 export type ServerStatus = 'online' | 'offline' | 'checking';
